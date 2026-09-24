@@ -6,18 +6,22 @@
   -webkit-tap-highlight-color: transparent;
 }
 
-body {
+html, body {
+  width: 100%;
+  max-width: 100%;
+  height: 100%;
   background-color: #090e0b;
   color: #ffffff;
   overflow-x: hidden;
-  min-height: 100vh;
 }
 
 /* GESTÃO DE ECRÃS */
 .screen {
   display: none;
-  width: 100vw;
-  height: 100vh;
+  width: 100%;
+  height: 100dvh; /* Usa a altura dinâmica do telemóvel sem estourar */
+  max-width: 100%;
+  overflow: hidden;
 }
 
 .screen.active {
@@ -30,32 +34,37 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 10px 15px;
+  padding: 8px 12px;
   background: #121a14;
   border-bottom: 1px solid #1e2d22;
-  min-height: 55px;
+  min-height: 50px;
+  max-height: 50px;
   gap: 10px;
-  z-index: 10;
+  flex-shrink: 0;
 }
 
 .header-left {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
+  overflow: hidden;
 }
 
 .brand-title {
   font-weight: bold;
-  font-size: 15px;
+  font-size: 14px;
   letter-spacing: 0.5px;
   color: #ffffff;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .header-right {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
+  flex-shrink: 0;
 }
 
 .btn-back {
@@ -69,7 +78,7 @@ body {
   align-items: center;
   gap: 5px;
   font-weight: bold;
-  font-size: 12px;
+  font-size: 11px;
   white-space: nowrap;
 }
 
@@ -83,15 +92,15 @@ body {
   background: #090e0b;
   border: 1px solid #223829;
   border-radius: 20px;
-  padding: 4px 10px;
-  max-width: 140px;
+  padding: 3px 8px;
+  max-width: 120px;
 }
 
 .search-box input {
   background: transparent;
   border: none;
   color: #fff;
-  padding: 2px 5px;
+  padding: 2px 4px;
   outline: none;
   width: 100%;
   font-size: 12px;
@@ -110,6 +119,8 @@ body {
   border: none;
   color: #ff4d4d;
   cursor: pointer;
+  display: flex;
+  align-items: center;
 }
 
 /* ECRÃ DE LOGIN */
@@ -118,11 +129,12 @@ body {
   align-items: center;
   background: radial-gradient(circle at center, #10331c 0%, #080d09 100%);
   padding: 15px;
+  overflow-y: auto;
 }
 
 .login-card {
   background: rgba(18, 26, 20, 0.95);
-  padding: 25px 20px;
+  padding: 20px;
   border-radius: 12px;
   width: 100%;
   max-width: 380px;
@@ -162,11 +174,12 @@ body {
 .form-group input, .form-group select {
   background: #090e0b;
   border: 1px solid #223829;
-  padding: 10px 12px;
+  padding: 10px;
   border-radius: 6px;
   color: #fff;
   font-size: 14px;
   outline: none;
+  width: 100%;
 }
 
 .btn-signin {
@@ -185,11 +198,12 @@ body {
 /* MENU PRINCIPAL (DASHBOARD) */
 .dashboard-content {
   flex: 1;
-  padding: 20px 15px;
+  padding: 15px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  overflow-y: auto;
 }
 
 .dash-welcome {
@@ -211,7 +225,7 @@ body {
   background: #121a14;
   border: 1px solid #1e2d22;
   border-radius: 10px;
-  padding: 25px 10px;
+  padding: 20px 10px;
   text-align: center;
   cursor: pointer;
   transition: background 0.2s, border-color 0.2s;
@@ -223,14 +237,14 @@ body {
 }
 
 .dash-card svg {
-  width: 36px;
-  height: 36px;
+  width: 32px;
+  height: 32px;
   color: #00ff66;
   margin-bottom: 8px;
 }
 
 .dash-card h3 {
-  font-size: 14px;
+  font-size: 13px;
 }
 
 .dash-card p {
@@ -242,21 +256,22 @@ body {
 .catalog-layout {
   display: flex;
   flex: 1;
-  height: calc(100vh - 55px);
+  height: calc(100dvh - 50px);
   overflow: hidden;
 }
 
 .category-sidebar {
-  width: 260px;
-  min-width: 260px;
+  width: 250px;
+  min-width: 250px;
   background: #121a14;
   border-right: 1px solid #1e2d22;
   display: flex;
   flex-direction: column;
+  flex-shrink: 0;
 }
 
 .category-sidebar h3 {
-  padding: 12px 15px;
+  padding: 10px 12px;
   font-size: 12px;
   color: #00ff66;
   letter-spacing: 1px;
@@ -271,7 +286,7 @@ body {
 }
 
 .category-item {
-  padding: 12px 15px;
+  padding: 10px 12px;
   font-size: 13px;
   color: #ccc;
   cursor: pointer;
@@ -290,7 +305,7 @@ body {
 .category-item .count {
   font-size: 11px;
   background: #090e0b;
-  padding: 2px 7px;
+  padding: 2px 6px;
   border-radius: 10px;
   color: #888;
 }
@@ -298,19 +313,19 @@ body {
 .catalog-content {
   flex: 1;
   overflow-y: auto;
-  padding: 15px;
+  padding: 12px;
   -webkit-overflow-scrolling: touch;
 }
 
 #catalog-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 10px;
 }
 
 .media-card {
   background: #121a14;
-  border-radius: 8px;
+  border-radius: 6px;
   overflow: hidden;
   cursor: pointer;
   border: 1px solid #1e2d22;
@@ -321,7 +336,7 @@ body {
 
 .media-poster {
   width: 100%;
-  height: 180px;
+  aspect-ratio: 2/3;
   object-fit: cover;
   background-color: #080d09;
 }
@@ -341,7 +356,7 @@ body {
 .player-container {
   flex: 1;
   display: flex;
-  height: calc(100vh - 55px);
+  height: calc(100dvh - 50px);
   background: #000;
   overflow: hidden;
 }
@@ -358,27 +373,28 @@ body {
 
 #video-player {
   width: 100%;
-  height: calc(100% - 50px);
+  height: calc(100% - 45px);
   background: #000;
 }
 
 .custom-player-controls {
-  height: 50px;
+  height: 45px;
   width: 100%;
   background: #121a14;
   border-top: 1px solid #1e2d22;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 15px;
+  gap: 12px;
+  flex-shrink: 0;
 }
 
 .custom-player-controls button {
   background: #1c2b20;
   border: 1px solid #2e4734;
   color: #fff;
-  width: 36px;
-  height: 36px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
   cursor: pointer;
   display: flex;
@@ -387,16 +403,17 @@ body {
 }
 
 .sidebar {
-  width: 260px;
-  min-width: 260px;
+  width: 250px;
+  min-width: 250px;
   background: #121a14;
   border-left: 1px solid #1e2d22;
   display: flex;
   flex-direction: column;
+  flex-shrink: 0;
 }
 
 .sidebar h3 {
-  padding: 10px 15px;
+  padding: 10px 12px;
   border-bottom: 1px solid #1e2d22;
   font-size: 12px;
   color: #00ff66;
@@ -410,7 +427,7 @@ body {
 }
 
 .sidebar-item {
-  padding: 10px 15px;
+  padding: 10px 12px;
   border-bottom: 1px solid #18241b;
   cursor: pointer;
   font-size: 12px;
@@ -423,7 +440,7 @@ body {
 }
 
 /* =========================================================
-   REGRAS ESPECÍFICAS PARA TELEMÓVEIS / ECRÃS PEQUENOS (< 768px)
+   AJUSTES PARA DISPOSITIVOS MÓVEIS (TELA VERTICAL)
    ========================================================= */
 
 @media (max-width: 768px) {
@@ -431,18 +448,20 @@ body {
   /* Menu Principal em lista vertical */
   .dash-grid {
     grid-template-columns: 1fr;
+    gap: 10px;
   }
 
   /* Catálogo: Divide em Topo (Categorias) e Fundo (Grelha) */
   .catalog-layout {
     flex-direction: column;
+    height: calc(100dvh - 50px);
   }
 
-  /* Sidebar passa para o topo com scroll HORIZONTAL */
+  /* Categorias viram uma barra deslizante no topo */
   .category-sidebar {
     width: 100%;
     min-width: 100%;
-    height: 50px;
+    height: 44px;
     border-right: none;
     border-bottom: 1px solid #1e2d22;
     background: #0d140e;
@@ -458,19 +477,19 @@ body {
     overflow-x: auto;
     overflow-y: hidden;
     white-space: nowrap;
-    padding: 6px 10px;
-    gap: 8px;
+    padding: 5px 8px;
+    gap: 6px;
     align-items: center;
     -webkit-overflow-scrolling: touch;
   }
 
   .category-item {
     display: inline-flex;
-    padding: 6px 12px;
+    padding: 5px 10px;
     border: 1px solid #1e2d22;
-    border-radius: 20px;
+    border-radius: 16px;
     background: #121a14;
-    font-size: 12px;
+    font-size: 11px;
     flex-shrink: 0;
   }
 
@@ -481,30 +500,37 @@ body {
   }
 
   .category-item .count {
-    margin-left: 6px;
+    margin-left: 5px;
     background: rgba(0,0,0,0.4);
     color: #fff;
+    font-size: 10px;
   }
 
-  /* Grelha de conteúdos no telemóvel (2 capas por linha) */
+  /* Grelha de conteúdos no telemóvel (3 capas por linha) */
   #catalog-grid {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 10px;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
   }
 
-  .media-poster {
-    height: 160px;
-  }
-
-  /* Player no Telemóvel */
+  /* Player no Telemóvel na Vertical */
   .player-container {
     flex-direction: column;
+    height: calc(100dvh - 50px);
   }
 
   .video-wrapper {
     width: 100%;
-    height: 40vh;
+    height: auto;
+    aspect-ratio: 16/9; /* Garante que o leitor não estoure a tela verticalmente */
     flex: none;
+  }
+
+  #video-player {
+    height: 100%;
+  }
+
+  .custom-player-controls {
+    display: none; /* No telemóvel, os controlos do próprio leitor nativo funcionam melhor */
   }
 
   .sidebar {
@@ -513,5 +539,6 @@ body {
     flex: 1;
     border-left: none;
     border-top: 1px solid #1e2d22;
+    overflow-y: auto;
   }
 }
