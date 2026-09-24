@@ -47,7 +47,6 @@ window.addEventListener('DOMContentLoaded', () => {
 function categorizeContent(section, items, categoriesList) {
   const groups = { 'TODOS': [...items] };
 
-  // 1. Cria os grupos com base nas categorias oficiais vindas da API
   const categoryMap = {};
   if (Array.isArray(categoriesList)) {
     categoriesList.forEach(cat => {
@@ -57,11 +56,9 @@ function categorizeContent(section, items, categoriesList) {
     });
   }
 
-  // 2. Associa cada item (canal, filme ou série) à sua respetiva categoria
   items.forEach(item => {
     let catName = categoryMap[item.category_id];
 
-    // Se o servidor não informou categoria válida, faz a busca pelo nome
     if (!catName) {
       const nameUpper = item.name.toUpperCase();
       if (section === 'live') {
@@ -82,7 +79,6 @@ function categorizeContent(section, items, categoriesList) {
     groups[catName].push(item);
   });
 
-  // Remove categorias vazias
   Object.keys(groups).forEach(key => {
     if (groups[key].length === 0 && key !== 'TODOS') {
       delete groups[key];
@@ -116,7 +112,7 @@ function renderCategorySidebar(groups) {
 }
 
 /* =========================================================
-   CONEXÃO COM A API XTREAM CODES E BUSCA COMPLETA
+   CONEXÃO COM A API XTREAM CODES E BUSCA ROBUSTA (CORS FIX)
    ========================================================= */
 
 async function connectXtream(baseUrl, user, pass) {
@@ -128,7 +124,6 @@ async function connectXtream(baseUrl, user, pass) {
     throw new Error('Utilizador ou palavra-passe inválidos.');
   }
 
-  // Busca paralela para máxima performance
   const [
     liveCats, vodCats, seriesCats,
     liveData, vodData, seriesData
@@ -337,19 +332,34 @@ function renderSidebarList(items, currentActive) {
   });
 }
 
+/* Sistema robusto de multiplos proxies CORS para GitHub Pages */
 async function fetchWithFallback(url) {
+  // 1. Tenta fetch direto
   try {
     const res = await fetch(url);
     if (res.ok) return await res.json();
   } catch (e) {}
 
+  // 2. Tenta CorsProxy.io
   try {
-    const res1 = await fetch("https://api.allorigins.win/raw?url=" + encodeURIComponent(url));
+    const res1 = await fetch("https://corsproxy.io/?" + encodeURIComponent(url));
     if (res1.ok) return await res1.json();
   } catch (e) {}
 
-  const res2 = await fetch("https://corsproxy.io/?" + encodeURIComponent(url));
-  return await res2.json();
+  // 3. Tenta AllOrigins (Retorna em formato JSON wrapper)
+  try {
+    const res2 = await fetch("https://api.allorigins.win/get?url=" + encodeURIComponent(url));
+    if (res2.ok) {
+      const data = await res2.json();
+      if (data && data.contents) {
+        return JSON.parse(data.contents);
+      }
+    }
+  } catch (e) {}
+
+  // 4. Último fallback AllOrigins raw
+  const res3 = await fetch("https://api.allorigins.win/raw?url=" + encodeURIComponent(url));
+  return await res3.json();
 }
 
 function getValidCoverUrl(coverPath, baseUrl) {
@@ -393,6 +403,11 @@ async function handleLogin(e) {
   } finally {
     if (submitBtn) { submitBtn.innerText = "ENTRAR"; submitBtn.disabled = false; }
   }
+}
+
+function logout() {
+  localStorage.removeItem('xc_user_session');
+  switchScreen('login-screen');
 }
 
 document.getElementById('catalog-search-input')?.addEventListener('input', (e) => {
