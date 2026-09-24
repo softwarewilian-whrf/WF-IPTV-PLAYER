@@ -2,7 +2,8 @@
   box-sizing: border-box;
   margin: 0;
   padding: 0;
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  -webkit-tap-highlight-color: transparent;
 }
 
 body {
@@ -29,23 +30,24 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 10px 20px;
+  padding: 10px 15px;
   background: #121a14;
   border-bottom: 1px solid #1e2d22;
-  min-height: 60px;
+  min-height: 55px;
   gap: 10px;
+  z-index: 10;
 }
 
 .header-left {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
 }
 
 .brand-title {
   font-weight: bold;
-  font-size: 16px;
-  letter-spacing: 1px;
+  font-size: 15px;
+  letter-spacing: 0.5px;
   color: #ffffff;
   white-space: nowrap;
 }
@@ -53,21 +55,21 @@ body {
 .header-right {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
 }
 
 .btn-back {
   background: #1c2b20;
   border: 1px solid #2e4734;
   color: #fff;
-  padding: 8px 12px;
+  padding: 6px 10px;
   border-radius: 6px;
   cursor: pointer;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
   font-weight: bold;
-  font-size: 13px;
+  font-size: 12px;
   white-space: nowrap;
 }
 
@@ -81,24 +83,24 @@ body {
   background: #090e0b;
   border: 1px solid #223829;
   border-radius: 20px;
-  padding: 4px 12px;
-  max-width: 200px;
+  padding: 4px 10px;
+  max-width: 140px;
 }
 
 .search-box input {
   background: transparent;
   border: none;
   color: #fff;
-  padding: 4px 8px;
+  padding: 2px 5px;
   outline: none;
   width: 100%;
-  font-size: 13px;
+  font-size: 12px;
 }
 
 .badge {
   background: #107c41;
-  font-size: 11px;
-  padding: 3px 8px;
+  font-size: 10px;
+  padding: 2px 6px;
   border-radius: 4px;
   font-weight: bold;
 }
@@ -115,28 +117,28 @@ body {
   justify-content: center;
   align-items: center;
   background: radial-gradient(circle at center, #10331c 0%, #080d09 100%);
-  padding: 20px;
+  padding: 15px;
 }
 
 .login-card {
   background: rgba(18, 26, 20, 0.95);
-  padding: 30px;
+  padding: 25px 20px;
   border-radius: 12px;
   width: 100%;
-  max-width: 400px;
+  max-width: 380px;
   border: 1px solid #107c41;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8);
 }
 
 .logo-area {
   text-align: center;
-  margin-bottom: 25px;
+  margin-bottom: 20px;
 }
 
 .logo-area h1 {
-  font-size: 22px;
+  font-size: 20px;
   color: #00ff66;
-  margin-top: 10px;
+  margin-top: 8px;
 }
 
 .logo-area p {
@@ -145,7 +147,7 @@ body {
 }
 
 .form-group {
-  margin-bottom: 15px;
+  margin-bottom: 12px;
   display: flex;
   flex-direction: column;
 }
@@ -153,7 +155,7 @@ body {
 .form-group label {
   font-size: 11px;
   color: #aaa;
-  margin-bottom: 5px;
+  margin-bottom: 4px;
   text-transform: uppercase;
 }
 
@@ -177,12 +179,13 @@ body {
   font-weight: bold;
   cursor: pointer;
   margin-top: 10px;
+  font-size: 14px;
 }
 
 /* MENU PRINCIPAL (DASHBOARD) */
 .dashboard-content {
   flex: 1;
-  padding: 20px;
+  padding: 20px 15px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -190,8 +193,8 @@ body {
 }
 
 .dash-welcome {
-  margin-bottom: 25px;
-  font-size: 18px;
+  margin-bottom: 20px;
+  font-size: 16px;
   text-align: center;
   color: #ccc;
 }
@@ -199,7 +202,7 @@ body {
 .dash-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 20px;
+  gap: 15px;
   width: 100%;
   max-width: 900px;
 }
@@ -208,36 +211,44 @@ body {
   background: #121a14;
   border: 1px solid #1e2d22;
   border-radius: 10px;
-  padding: 30px 15px;
+  padding: 25px 10px;
   text-align: center;
   cursor: pointer;
-  transition: transform 0.2s, border-color 0.2s;
+  transition: background 0.2s, border-color 0.2s;
 }
 
-.dash-card:hover {
-  transform: translateY(-5px);
-  border-color: #00ff66;
+.dash-card:active, .dash-card:hover {
   background: #16221a;
+  border-color: #00ff66;
 }
 
 .dash-card svg {
-  width: 40px;
-  height: 40px;
+  width: 36px;
+  height: 36px;
   color: #00ff66;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
 }
 
-/* LAYOUT DO CATÁLOGO COM SIDEBAR DE CATEGORIAS */
+.dash-card h3 {
+  font-size: 14px;
+}
+
+.dash-card p {
+  font-size: 11px;
+  color: #888;
+}
+
+/* LAYOUT DO CATÁLOGO */
 .catalog-layout {
   display: flex;
   flex: 1;
-  height: calc(100vh - 60px);
+  height: calc(100vh - 55px);
   overflow: hidden;
 }
 
 .category-sidebar {
-  width: 250px;
-  min-width: 250px;
+  width: 260px;
+  min-width: 260px;
   background: #121a14;
   border-right: 1px solid #1e2d22;
   display: flex;
@@ -265,13 +276,12 @@ body {
   color: #ccc;
   cursor: pointer;
   border-bottom: 1px solid #18241b;
-  transition: background 0.2s, color 0.2s;
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
 
-.category-item:hover, .category-item.active {
+.category-item.active {
   background: #1a2b1e;
   color: #00ff66;
   font-weight: bold;
@@ -288,13 +298,14 @@ body {
 .catalog-content {
   flex: 1;
   overflow-y: auto;
-  padding: 20px;
+  padding: 15px;
+  -webkit-overflow-scrolling: touch;
 }
 
 #catalog-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-  gap: 15px;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 12px;
 }
 
 .media-card {
@@ -302,28 +313,22 @@ body {
   border-radius: 8px;
   overflow: hidden;
   cursor: pointer;
-  transition: transform 0.2s, border-color 0.2s;
   border: 1px solid #1e2d22;
   display: flex;
   flex-direction: column;
   align-items: center;
 }
 
-.media-card:hover {
-  transform: scale(1.03);
-  border-color: #00ff66;
-}
-
 .media-poster {
   width: 100%;
-  height: 200px;
+  height: 180px;
   object-fit: cover;
   background-color: #080d09;
 }
 
 .media-card span {
-  padding: 8px;
-  font-size: 12px;
+  padding: 6px;
+  font-size: 11px;
   color: #ffffff;
   text-align: center;
   white-space: nowrap;
@@ -332,11 +337,11 @@ body {
   width: 100%;
 }
 
-/* PLAYER DE VÍDEO & CONTROLES */
+/* PLAYER E ECRÃ DE VÍDEO */
 .player-container {
   flex: 1;
   display: flex;
-  height: calc(100vh - 60px);
+  height: calc(100vh - 55px);
   background: #000;
   overflow: hidden;
 }
@@ -353,12 +358,12 @@ body {
 
 #video-player {
   width: 100%;
-  height: calc(100% - 55px);
+  height: calc(100% - 50px);
   background: #000;
 }
 
 .custom-player-controls {
-  height: 55px;
+  height: 50px;
   width: 100%;
   background: #121a14;
   border-top: 1px solid #1e2d22;
@@ -372,25 +377,18 @@ body {
   background: #1c2b20;
   border: 1px solid #2e4734;
   color: #fff;
-  width: 38px;
-  height: 38px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s;
-}
-
-.custom-player-controls button:hover {
-  background: #00ff66;
-  color: #000;
-  border-color: #00ff66;
 }
 
 .sidebar {
-  width: 280px;
-  min-width: 280px;
+  width: 260px;
+  min-width: 260px;
   background: #121a14;
   border-left: 1px solid #1e2d22;
   display: flex;
@@ -398,7 +396,7 @@ body {
 }
 
 .sidebar h3 {
-  padding: 12px 15px;
+  padding: 10px 15px;
   border-bottom: 1px solid #1e2d22;
   font-size: 12px;
   color: #00ff66;
@@ -416,137 +414,97 @@ body {
   border-bottom: 1px solid #18241b;
   cursor: pointer;
   font-size: 12px;
-  transition: background 0.2s;
 }
 
-.sidebar-item:hover, .sidebar-item.active {
+.sidebar-item.active {
   background: #1a2b1e;
   color: #00ff66;
   font-weight: bold;
 }
 
 /* =========================================================
-   MEDIA QUERIES - ADAPTAÇÃO PARA DISPOSITIVOS MÓVEIS / DISPOSITIVOS
+   REGRAS ESPECÍFICAS PARA TELEMÓVEIS / ECRÃS PEQUENOS (< 768px)
    ========================================================= */
 
-/* Tablets e Telemóveis em modo paisagem (Landscape) */
-@media (max-width: 900px) {
-  .dash-grid {
-    grid-template-columns: repeat(3, 1fr);
-    gap: 10px;
-  }
-}
-
-/* Telemóveis (Smartphones) */
 @media (max-width: 768px) {
   
-  /* Top Bar */
-  .top-bar {
-    padding: 10px;
-  }
-  
-  .brand-title {
-    font-size: 14px;
-  }
-
-  .search-box {
-    max-width: 130px;
-  }
-
-  /* Dashboard */
+  /* Menu Principal em lista vertical */
   .dash-grid {
     grid-template-columns: 1fr;
-    gap: 15px;
   }
 
-  .dash-card {
-    padding: 20px;
-  }
-
-  /* Layout do Catálogo */
+  /* Catálogo: Divide em Topo (Categorias) e Fundo (Grelha) */
   .catalog-layout {
     flex-direction: column;
-    height: auto;
-    overflow-y: auto;
   }
 
-  /* Sidebar de Categorias vira um menu deslizante horizontal no topo */
+  /* Sidebar passa para o topo com scroll HORIZONTAL */
   .category-sidebar {
     width: 100%;
     min-width: 100%;
-    height: auto;
+    height: 50px;
     border-right: none;
     border-bottom: 1px solid #1e2d22;
+    background: #0d140e;
   }
 
   .category-sidebar h3 {
-    display: none; /* Esconde o título para economizar espaço no ecrã do telemóvel */
+    display: none;
   }
 
   #category-list {
     display: flex;
     flex-direction: row;
     overflow-x: auto;
+    overflow-y: hidden;
     white-space: nowrap;
-    padding: 5px;
+    padding: 6px 10px;
+    gap: 8px;
+    align-items: center;
+    -webkit-overflow-scrolling: touch;
   }
 
   .category-item {
-    padding: 8px 12px;
-    border-bottom: none;
-    border-right: 1px solid #18241b;
+    display: inline-flex;
+    padding: 6px 12px;
+    border: 1px solid #1e2d22;
     border-radius: 20px;
-    margin-right: 5px;
-    background: #090e0b;
+    background: #121a14;
     font-size: 12px;
+    flex-shrink: 0;
   }
 
   .category-item.active {
     background: #107c41;
-    color: #fff;
+    border-color: #00ff66;
+    color: #ffffff;
   }
 
   .category-item .count {
     margin-left: 6px;
+    background: rgba(0,0,0,0.4);
+    color: #fff;
   }
 
-  .catalog-content {
-    padding: 10px;
-  }
-
+  /* Grelha de conteúdos no telemóvel (2 capas por linha) */
   #catalog-grid {
-    grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+    grid-template-columns: repeat(2, 1fr);
     gap: 10px;
   }
 
   .media-poster {
-    height: 150px;
+    height: 160px;
   }
 
-  /* Layout do Player em Telemóveis */
+  /* Player no Telemóvel */
   .player-container {
     flex-direction: column;
-    height: calc(100vh - 60px);
   }
 
   .video-wrapper {
     width: 100%;
-    height: 50vh;
+    height: 40vh;
     flex: none;
-  }
-
-  #video-player {
-    height: calc(100% - 50px);
-  }
-
-  .custom-player-controls {
-    height: 50px;
-    gap: 10px;
-  }
-
-  .custom-player-controls button {
-    width: 32px;
-    height: 32px;
   }
 
   .sidebar {
