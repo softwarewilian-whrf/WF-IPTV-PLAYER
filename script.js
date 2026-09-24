@@ -170,7 +170,7 @@ async function connectXtream(baseUrl, user, pass) {
 }
 
 /* =========================================================
-   NAVEGAÇÃO, EXIBIÇÃO E PLAYER
+   NAVEGAÇÃO E EXIBIÇÃO DO CATÁLOGO
    ========================================================= */
 
 function openCatalog(section) {
@@ -232,6 +232,10 @@ function startPlayerView(selectedItem, fullList) {
   playMedia(currentPlaylist[currentIndex]);
 }
 
+/* =========================================================
+   PLAYER DE VÍDEO CORRIGIDO (FORÇA HTTPS NO STREAM)
+   ========================================================= */
+
 function playMedia(item) {
   const video = document.getElementById('video-player');
   const titleEl = document.getElementById('playing-title');
@@ -242,13 +246,25 @@ function playMedia(item) {
     hlsPlayer = null;
   }
 
+  // Força HTTPS no link do canal para evitar bloqueio de Mixed Content do GitHub Pages
   let streamUrl = item.url;
+  if (streamUrl && streamUrl.startsWith('http://')) {
+    streamUrl = streamUrl.replace('http://', 'https://');
+  }
 
   if (Hls.isSupported() && streamUrl.includes('.m3u8')) {
-    hlsPlayer = new Hls({ enableWorker: true });
+    hlsPlayer = new Hls({ 
+      enableWorker: true,
+      xhrSetup: function (xhr, url) {
+        xhr.withCredentials = false;
+      }
+    });
     hlsPlayer.loadSource(streamUrl);
     hlsPlayer.attachMedia(video);
     hlsPlayer.on(Hls.Events.MANIFEST_PARSED, () => video.play().catch(() => {}));
+    hlsPlayer.on(Hls.Events.ERROR, function (event, data) {
+      console.error("Erro no Hls.js:", data);
+    });
   } else {
     video.src = streamUrl;
     video.play().catch(() => {});
@@ -292,10 +308,13 @@ async function loadSeriesEpisodes(series) {
     if (data && data.episodes) {
       Object.keys(data.episodes).forEach(season => {
         data.episodes[season].forEach(ep => {
+          let epUrl = `${cleanUrl}/series/${user}/${pass}/${ep.id}.${ep.container_extension || 'mp4'}`;
+          if (epUrl.startsWith('http://')) epUrl = epUrl.replace('http://', 'https://');
+
           episodesList.push({
             name: `T${season}:E${ep.episode_num} - ${ep.title || 'Episódio'}`,
             cover: getValidCoverUrl(ep.info?.movie_image || series.cover, cleanUrl),
-            url: `${cleanUrl}/series/${user}/${pass}/${ep.id}.${ep.container_extension || 'mp4'}`
+            url: epUrl
           });
         });
       });
@@ -332,21 +351,18 @@ function renderSidebarList(items, currentActive) {
   });
 }
 
-/* Sistema robusto de multiplos proxies CORS para GitHub Pages */
+/* Sistema robusto de múltiplos proxies CORS para GitHub Pages */
 async function fetchWithFallback(url) {
-  // 1. Tenta fetch direto
   try {
     const res = await fetch(url);
     if (res.ok) return await res.json();
   } catch (e) {}
 
-  // 2. Tenta CorsProxy.io
   try {
     const res1 = await fetch("https://corsproxy.io/?" + encodeURIComponent(url));
     if (res1.ok) return await res1.json();
   } catch (e) {}
 
-  // 3. Tenta AllOrigins (Retorna em formato JSON wrapper)
   try {
     const res2 = await fetch("https://api.allorigins.win/get?url=" + encodeURIComponent(url));
     if (res2.ok) {
@@ -357,7 +373,6 @@ async function fetchWithFallback(url) {
     }
   } catch (e) {}
 
-  // 4. Último fallback AllOrigins raw
   const res3 = await fetch("https://api.allorigins.win/raw?url=" + encodeURIComponent(url));
   return await res3.json();
 }
@@ -368,7 +383,8 @@ function getValidCoverUrl(coverPath, baseUrl) {
   if (!fullUrl.startsWith('http://') && !fullUrl.startsWith('https://')) {
     fullUrl = baseUrl.replace(/\/$/, "") + (fullUrl.startsWith('/') ? fullUrl : '/' + fullUrl);
   }
-  return fullUrl.startsWith('http://') ? "https://images.weserv.nl/?url=" + encodeURIComponent(fullUrl) : fullUrl;
+  if (fullUrl.startsWith('http://')) fullUrl = fullUrl.replace('http://', 'https://');
+  return fullUrl.includes('images.weserv.nl') ? fullUrl : "https://images.weserv.nl/?url=" + encodeURIComponent(fullUrl);
 }
 
 function switchScreen(id) {
