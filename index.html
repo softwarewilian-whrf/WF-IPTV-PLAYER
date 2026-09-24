@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WF IPTV Player</title>
+
+  <!-- Ligação do estilo CSS com versão para evitar cache -->
+  <link rel="stylesheet" href="style.css?v=3.0">
+
+  <!-- Ícones Lucide -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Reprodução de vídeos HLS -->
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+</head>
+<body>
+
+  <!-- 1. ECRÃ DE LOGIN / CONEXÃO -->
+  <div id="login-screen" class="screen active">
+    <div class="login-card">
+      <div class="logo-area">
+        <i data-lucide="tv" class="logo-icon"></i>
+        <h1>WF IPTV PLAYER</h1>
+        <p>Aceda aos seus canais, filmes e séries</p>
+      </div>
+
+      <form onsubmit="handleLogin(event)">
+        <div class="form-group">
+          <label for="server-type">Tipo de Servidor</label>
+          <select id="server-type" onchange="toggleFields()">
+            <option value="xtream">Xtream Codes API</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="server-url">URL do Servidor / Host</label>
+          <input type="text" id="server-url" placeholder="http://exemplo.com:8080" required>
+        </div>
+
+        <div class="form-group cred-field">
+          <label for="username">Utilizador</label>
+          <input type="text" id="username" placeholder="Seu utilizador">
+        </div>
+
+        <div class="form-group cred-field">
+          <label for="password">Palavra-passe</label>
+          <input type="password" id="password" placeholder="Sua palavra-passe">
+        </div>
+
+        <button type="submit" class="btn-signin">ENTRAR</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- 2. ECRÃ PRINCIPAL (DASHBOARD) -->
+  <div id="dashboard-screen" class="screen">
+    <div class="top-bar">
+      <div class="header-left">
+        <i data-lucide="tv" class="header-logo"></i>
+        <span class="brand-title">IPTV PLAYER</span>
+      </div>
+      <div class="header-right">
+        <span class="badge" id="conn-type">XTREAM</span>
+        <span id="clock">00:00:00</span>
+        <button class="btn-icon" onclick="logout()" title="Sair">
+          <i data-lucide="log-out"></i>
+        </button>
+      </div>
+    </div>
+
+    <div class="dashboard-content">
+      <h2 class="dash-welcome">Selecione o tipo de conteúdo</h2>
+      
+      <div class="dash-grid">
+        <div class="dash-card" onclick="openCatalog('live')">
+          <i data-lucide="tv-2"></i>
+          <h3>CANAIS AO VIVO</h3>
+          <p>Transmissões em direto</p>
+        </div>
+
+        <div class="dash-card" onclick="openCatalog('movies')">
+          <i data-lucide="film"></i>
+          <h3>FILMES</h3>
+          <p>Catálogo de VOD</p>
+        </div>
+
+        <div class="dash-card" onclick="openCatalog('series')">
+          <i data-lucide="clapperboard"></i>
+          <h3>SÉRIES</h3>
+          <p>Temporadas e episódios</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. ECRÃ DE CATÁLOGO COM SIDEBAR DE CATEGORIAS -->
+  <div id="catalog-screen" class="screen">
+    <div class="top-bar">
+      <div class="header-left">
+        <button class="btn-back" onclick="switchScreen('dashboard-screen')">
+          <i data-lucide="arrow-left"></i> VOLTAR
+        </button>
+        <span class="brand-title" id="catalog-title">CATÁLOGO</span>
+      </div>
+      <div class="search-box">
+        <i data-lucide="search" style="width:16px; height:16px; color:#888;"></i>
+        <input type="text" id="catalog-search-input" placeholder="Pesquisar...">
+      </div>
+    </div>
+
+    <div class="catalog-layout">
+      <!-- Sidebar Lateral de Categorias -->
+      <aside class="category-sidebar">
+        <h3>CATEGORIAS</h3>
+        <ul id="category-list">
+          <!-- Categorias geradas via JS -->
+        </ul>
+      </aside>
+
+      <!-- Grelha de Capas -->
+      <main class="catalog-content">
+        <div id="catalog-grid"></div>
+      </main>
+    </div>
+  </div>
+
+  <!-- 4. ECRÃ DE REPRODUÇÃO (PLAYER COM PAINEL DE CONTROLOS) -->
+  <div id="player-screen" class="screen">
+    <div class="top-bar">
+      <div class="header-left">
+        <button class="btn-back" onclick="switchScreen('catalog-screen')">
+          <i data-lucide="arrow-left"></i> VOLTAR AO CATÁLOGO
+        </button>
+        <span class="brand-title" id="playing-title">A reproduzir mídia</span>
+      </div>
+    </div>
+
+    <div class="player-container">
+      <div class="video-wrapper">
+        <video id="video-player" controls autoplay></video>
+        
+        <!-- Painel de Controlos do Leitor -->
+        <div class="custom-player-controls">
+          <button onclick="prevMedia()" title="Anterior"><i data-lucide="skip-back"></i></button>
+          <button onclick="playMediaControl()" title="Reproduzir"><i data-lucide="play"></i></button>
+          <button onclick="pauseMediaControl()" title="Pausar"><i data-lucide="pause"></i></button>
+          <button onclick="stopMediaControl()" title="Parar"><i data-lucide="square"></i></button>
+          <button onclick="nextMedia()" title="Próximo"><i data-lucide="skip-forward"></i></button>
+        </div>
+      </div>
+
+      <!-- Lista Lateral de Canais/Episódios -->
+      <aside class="sidebar">
+        <h3>RELAÇÃO DE CONTEÚDO</h3>
+        <ul id="sidebar-list"></ul>
+      </aside>
+    </div>
+  </div>
+
+  <!-- Script principal da aplicação -->
+  <script src="script.js?v=3.0"></script>
+</body>
+</html>
