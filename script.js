@@ -26,7 +26,8 @@ class IPTVEngine {
    */
   formatUrlWithProxy(url) {
     if (!url) return '';
-    // Se o site está em HTTPS e a URL de mídia é HTTP, usa o proxy
+    
+    // Se o site estiver em HTTPS e o link for HTTP, força a utilização do proxy HTTPS
     if (window.location.protocol === 'https:' && url.startsWith('http://')) {
       return `https://corsproxy.io/?${encodeURIComponent(url)}`;
     }
@@ -55,13 +56,13 @@ class IPTVEngine {
         this.serverInfo = data.server_info;
         return { success: true, user: this.userInfo, server: this.serverInfo };
       } else {
-        return { success: false, message: 'Usuário ou senha inválidos.' };
+        return { success: false, message: 'Utilizador ou palavra-passe inválidos.' };
       }
     } catch (error) {
       console.error('Erro de autenticação:', error);
       return { 
         success: false, 
-        message: 'Não foi possível conectar ao servidor. Verifique a URL e credenciais.' 
+        message: 'Não foi possível conectar ao servidor. Verifique o endereço e os dados de acesso.' 
       };
     }
   }
@@ -84,7 +85,7 @@ class IPTVEngine {
       const response = await fetch(url);
       return await response.json();
     } catch (error) {
-      console.error(`Erro ao buscar categorias (${type}):`, error);
+      console.error(`Erro ao procurar categorias (${type}):`, error);
       return [];
     }
   }
@@ -128,13 +129,13 @@ class IPTVEngine {
       const response = await fetch(url);
       return await response.json();
     } catch (error) {
-      console.error('Erro ao buscar episódios da série:', error);
+      console.error('Erro ao procurar episódios da série:', error);
       return null;
     }
   }
 
   /**
-   * 5. Monta a URL de Reprodução (Com correção para Mixed Content no GitHub Pages)
+   * 5. Monta a URL de Reprodução e aplica o proxy se necessário
    */
   getStreamUrl(streamId, containerExtension = null, type = 'live') {
     let rawUrl = '';
@@ -150,12 +151,11 @@ class IPTVEngine {
       rawUrl = `${this.serverUrl}/series/${this.username}/${this.password}/${streamId}.${ext}`;
     }
 
-    // Aplica o proxy HTTPS para evitar o bloqueio de "Mixed Content" do navegador
     return this.formatUrlWithProxy(rawUrl);
   }
 
   /**
-   * 6. Tocador de Vídeo Otimizado com suporte HLS e Fallbacks
+   * 6. Tocador de Vídeo Otimizado com Suporte HLS.js
    */
   playStream(videoElement, streamUrl) {
     if (this.hlsPlayer) {
@@ -163,8 +163,10 @@ class IPTVEngine {
       this.hlsPlayer = null;
     }
 
+    // Garante que a URL passada para o player já passou pelo filtro do proxy
+    const finalStreamUrl = this.formatUrlWithProxy(streamUrl);
     const isLive = this.currentType === 'live';
-    const isM3U8 = streamUrl.includes('.m3u8');
+    const isM3U8 = finalStreamUrl.includes('.m3u8');
 
     if (Hls.isSupported() && (isM3U8 || isLive)) {
       this.hlsPlayer = new Hls({
@@ -173,14 +175,20 @@ class IPTVEngine {
         backBufferLength: 90,
         liveSyncDurationCount: 3,
         liveMaxLatencyDurationCount: 10,
-        maxBufferLength: 30
+        maxBufferLength: 30,
+        // Reescreve URLs internas de segmentos TS se o manifesto contiver links HTTP
+        xhrSetup: (xhr, url) => {
+          if (window.location.protocol === 'https:' && url.startsWith('http://')) {
+            xhr.open('GET', `https://corsproxy.io/?${encodeURIComponent(url)}`, true);
+          }
+        }
       });
 
-      this.hlsPlayer.loadSource(streamUrl);
+      this.hlsPlayer.loadSource(finalStreamUrl);
       this.hlsPlayer.attachMedia(videoElement);
 
       this.hlsPlayer.on(Hls.Events.MANIFEST_PARSED, () => {
-        videoElement.play().catch(e => console.log('Autoplay bloqueado:', e));
+        videoElement.play().catch(e => console.log('Autoplay bloqueado pelo navegador:', e));
       });
 
       this.hlsPlayer.on(Hls.Events.ERROR, (event, data) => {
@@ -191,24 +199,24 @@ class IPTVEngine {
               this.hlsPlayer.startLoad();
               break;
             case Hls.ErrorTypes.MEDIA_ERROR:
-              console.warn('Erro de mídia. Tentando recuperar...');
+              console.warn('Erro de comunicação de mídia. A tentar recuperar...');
               this.hlsPlayer.recoverMediaError();
               break;
             default:
-              console.error('Erro fatal no HLS.js. Tentando HTML5 nativo...');
+              console.error('Erro fatal no HLS.js. A tentar reprodutor nativo HTML5...');
               this.hlsPlayer.destroy();
               this.hlsPlayer = null;
-              videoElement.src = streamUrl;
+              videoElement.src = finalStreamUrl;
               videoElement.play().catch(() => {});
               break;
           }
         }
       });
     } else if (videoElement.canPlayType('application/vnd.apple.mpegurl')) {
-      videoElement.src = streamUrl;
+      videoElement.src = finalStreamUrl;
       videoElement.play().catch(e => console.log('Autoplay bloqueado:', e));
     } else {
-      videoElement.src = streamUrl;
+      videoElement.src = finalStreamUrl;
       videoElement.play().catch(e => console.log('Autoplay bloqueado:', e));
     }
   }
@@ -243,7 +251,7 @@ function startClock() {
   if (!clockEl) return;
   setInterval(() => {
     const now = new Date();
-    clockEl.innerText = now.toLocaleTimeString('pt-BR');
+    clockEl.innerText = now.toLocaleTimeString('pt-PT');
   }, 1000);
 }
 
@@ -261,7 +269,7 @@ async function handleLogin(event) {
 
   const btn = event.target.querySelector('button');
   const originalText = btn.innerText;
-  btn.innerText = 'CONECTANDO...';
+  btn.innerText = 'A LIGAR...';
   btn.disabled = true;
 
   const result = await iptv.login(url, user, pass);
@@ -300,7 +308,7 @@ async function openCatalog(type) {
   switchScreen('catalog-screen');
 
   const categoriesList = document.getElementById('category-list');
-  categoriesList.innerHTML = '<li class="category-item">Carregando...</li>';
+  categoriesList.innerHTML = '<li class="category-item">A carregar...</li>';
 
   const grid = document.getElementById('catalog-grid');
   grid.innerHTML = '<p style="grid-column: 1/-1; text-align: center; color: #888;">Selecione uma categoria...</p>';
@@ -342,7 +350,7 @@ async function selectCategory(categoryId) {
   });
 
   const grid = document.getElementById('catalog-grid');
-  grid.innerHTML = '<p style="grid-column: 1/-1; text-align: center; color: #888;">Carregando conteúdos...</p>';
+  grid.innerHTML = '<p style="grid-column: 1/-1; text-align: center; color: #888;">A carregar conteúdos...</p>';
 
   const items = await iptv.getStreams(iptv.currentType, categoryId);
   iptv.currentItems = items;
@@ -404,7 +412,7 @@ async function loadSeriesEpisodes(seriesItem) {
   if (titleEl) titleEl.innerText = seriesItem.name;
 
   const sidebarList = document.getElementById('sidebar-list');
-  sidebarList.innerHTML = '<li class="sidebar-item">Carregando episódios...</li>';
+  sidebarList.innerHTML = '<li class="sidebar-item">A carregar episódios...</li>';
 
   const data = await iptv.getSeriesInfo(seriesItem.series_id);
 
