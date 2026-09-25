@@ -1,195 +1,555 @@
-lucide.createIcons();
+/**
+ * ============================================================
+ * WF IPTV PLAYER - SCRIPT PRINCIPAL CORRIGIDO
+ * ============================================================
+ */
 
-let activeSection = 'live';
-let currentData = { live: [], movies: [], series: [] };
-let categoriesData = { live: [], movies: [], series: [] };
-let groupedData = {};
-let activeCategory = 'TODOS';
-let currentPlaylist = [];
-let currentIndex = -1;
-let hlsPlayer = null;
-let currentCredentials = { url: '', user: '', pass: '' };
+class IPTVEngine {
 
-// Relógio em tempo real
-setInterval(() => {
-  const clock = document.getElementById('clock');
-  if (clock) clock.innerText = new Date().toLocaleTimeString();
-}, 1000);
+  constructor() {
+    this.serverUrl = '';
+    this.username = '';
+    this.password = '';
+    this.userInfo = null;
+    this.serverInfo = null;
+    this.hlsPlayer = null;
+    this.currentType = 'live';
+    this.categories = [];
+    this.currentCategoryId = null;
+    this.currentItems = [];
+    this.filteredItems = [];
+    this.selectedItemIndex = -1;
+  }
 
-window.addEventListener('DOMContentLoaded', () => {
-  const savedData = localStorage.getItem('xc_user_session');
-  if (savedData) {
+  /* ==========================================================
+     PROXY PARA SUPORTE A HTTPS E MIXED CONTENT
+     ========================================================== */
+
+  formatUrlWithProxy(url) {
+    if (!url) return '';
+    const cleanUrl = String(url).trim();
+    if (!cleanUrl) return '';
+
+    if (
+      window.location.protocol === 'https:' &&
+      cleanUrl.toLowerCase().startsWith('http://')
+    ) {
+      return 'https://corsproxy.io/?url=' + encodeURIComponent(cleanUrl);
+    }
+
+    return cleanUrl;
+  }
+
+  /* ==========================================================
+     FETCH JSON
+     ========================================================== */
+
+  async fetchJson(url, description) {
+    console.log('[IPTV] Requisição:', description || 'API');
+    console.log('[IPTV] URL:', url);
+
     try {
-      const session = JSON.parse(savedData);
-      document.getElementById('server-url').value = session.url || '';
-      if (document.getElementById('username')) document.getElementById('username').value = session.user || '';
-      if (document.getElementById('password')) document.getElementById('password').value = session.pass || '';
-      autoLogin(session);
-    } catch (e) {
-      console.error(e);
+      const response = await fetch(url, {
+        method: 'GET',
+        cache: 'no-store'
+      });
+
+      if (!response.ok) {
+        throw new Error('HTTP ' + response.status + ' - ' + response.statusText);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('[IPTV] Erro na requisição:', description || 'API', error);
+      throw error;
     }
   }
 
-  const video = document.getElementById('video-player');
-  if (video) {
-    video.addEventListener('ended', () => {
-      if (currentIndex < currentPlaylist.length - 1) {
-        nextMedia();
+  /* ==========================================================
+     LOGIN XTREAM
+     ========================================================== */
+
+  async login(serverUrl, username, password) {
+    this.serverUrl = String(serverUrl || '').trim().replace(/\/+$/, '');
+    this.username = String(username || '').trim();
+    this.password = String(password || '').trim();
+
+    if (!this.serverUrl || !this.username || !this.password) {
+      return {
+        success: false,
+        message: 'Preencha servidor, usuário e senha.'
+      };
+    }
+
+    const rawApiUrl =
+      this.serverUrl +
+      '/player_api.php?username=' +
+      encodeURIComponent(this.username) +
+      '&password=' +
+      encodeURIComponent(this.password);
+
+    const apiUrl = this.formatUrlWithProxy(rawApiUrl);
+
+    try {
+      const data = await this.fetchJson(apiUrl, 'Autenticação');
+
+      if (data && data.user_info && Number(data.user_info.auth) === 1) {
+        this.userInfo = data.user_info;
+        this.serverInfo = data.server_info || null;
+
+        console.log('[IPTV] Login realizado com sucesso.');
+
+        return {
+          success: true,
+          user: this.userInfo,
+          server: this.serverInfo
+        };
       }
+
+      console.error('[IPTV] Servidor recusou a autenticação.');
+      return {
+        success: false,
+        message: 'Usuário ou senha inválidos.'
+      };
+
+    } catch (error) {
+      console.error('[IPTV] Erro de autenticação:', error);
+      return {
+        success: false,
+        message: 'Não foi possível conectar ao servidor. Verifique o endereço e os dados de acesso.'
+      };
+    }
+  }
+
+  /* ==========================================================
+     CATEGORIAS
+     ========================================================== */
+
+  async getCategories(type) {
+    const actionMap = {
+      live: 'get_live_categories',
+      movies: 'get_vod_categories',
+      series: 'get_series_categories'
+    };
+
+    const action = actionMap[type] || actionMap.live;
+
+    const rawUrl =
+      this.serverUrl +
+      '/player_api.php?username=' +
+      encodeURIComponent(this.username) +
+      '&password=' +
+      encodeURIComponent(this.password) +
+      '&action=' +
+      action;
+
+    const url = this.formatUrlWithProxy(rawUrl);
+
+    try {
+      const data = await this.fetchJson(url, 'Categorias - ' + type);
+      return Array.isArray(data) ? data : [];
+    } catch (error) {
+      console.error('[IPTV] Erro ao procurar categorias:', type, error);
+      return [];
+    }
+  }
+
+  /* ==========================================================
+     STREAMS / CANAIS / FILMES / SÉRIES
+     ========================================================== */
+
+  async getStreams(type, categoryId = null) {
+    const actionMap = {
+      live: 'get_live_streams',
+      movies: 'get_vod_streams',
+      series: 'get_series'
+    };
+
+    const action = actionMap[type] || actionMap.live;
+
+    let rawUrl =
+      this.serverUrl +
+      '/player_api.php?username=' +
+      encodeURIComponent(this.username) +
+      '&password=' +
+      encodeURIComponent(this.password) +
+      '&action=' +
+      action;
+
+    if (categoryId !== null && categoryId !== undefined && categoryId !== '') {
+      rawUrl += '&category_id=' + encodeURIComponent(categoryId);
+    }
+
+    const url = this.formatUrlWithProxy(rawUrl);
+
+    try {
+      const data = await this.fetchJson(url, 'Streams - ' + type);
+      return Array.isArray(data) ? data : [];
+    } catch (error) {
+      console.error('[IPTV] Erro ao carregar streams:', type, error);
+      return [];
+    }
+  }
+
+  /* ==========================================================
+     INFORMAÇÕES DA SÉRIE
+     ========================================================== */
+
+  async getSeriesInfo(seriesId) {
+    const rawUrl =
+      this.serverUrl +
+      '/player_api.php?username=' +
+      encodeURIComponent(this.username) +
+      '&password=' +
+      encodeURIComponent(this.password) +
+      '&action=get_series_info' +
+      '&series_id=' +
+      encodeURIComponent(seriesId);
+
+    const url = this.formatUrlWithProxy(rawUrl);
+
+    try {
+      return await this.fetchJson(url, 'Informações da série');
+    } catch (error) {
+      console.error('[IPTV] Erro ao procurar episódios:', error);
+      return null;
+    }
+  }
+
+  /* ==========================================================
+     URL DO STREAM (CORRIGIDO PARA CANAIS AO VIVO)
+     ========================================================== */
+
+  getStreamUrl(streamId, containerExtension = null, type = 'live', directSource = null) {
+    if (directSource && String(directSource).trim() !== '') {
+      return String(directSource).trim();
+    }
+
+    if (streamId === null || streamId === undefined || streamId === '') {
+      console.error('[IPTV] stream_id inválido.');
+      return '';
+    }
+
+    const user = encodeURIComponent(this.username);
+    const pass = encodeURIComponent(this.password);
+    const id = encodeURIComponent(streamId);
+    let rawUrl = '';
+
+    // CANAIS AO VIVO: Força HLS (.m3u8) para rodar nativamente via HLS.js
+    if (type === 'live') {
+      rawUrl = `${this.serverUrl}/live/${user}/${pass}/${id}.m3u8`;
+    } 
+    // FILMES
+    else if (type === 'movies') {
+      let ext = containerExtension ? String(containerExtension).replace(/^\./, '') : 'mp4';
+      rawUrl = `${this.serverUrl}/movie/${user}/${pass}/${id}.${ext}`;
+    } 
+    // SÉRIES
+    else if (type === 'series') {
+      let ext = containerExtension ? String(containerExtension).replace(/^\./, '') : 'mp4';
+      rawUrl = `${this.serverUrl}/series/${user}/${pass}/${id}.${ext}`;
+    }
+
+    console.log('[IPTV] URL original do stream:', rawUrl);
+    return rawUrl;
+  }
+
+  /* ==========================================================
+     DETECTAR FORMATO
+     ========================================================== */
+
+  detectStreamType(streamUrl) {
+    const url = String(streamUrl || '').toLowerCase();
+
+    if (url.includes('.m3u8') || url.includes('m3u8')) return 'hls';
+    if (url.includes('.mp4')) return 'mp4';
+    if (url.includes('.ts')) return 'ts';
+
+    return 'unknown';
+  }
+
+  /* ==========================================================
+     LIMPAR PLAYER
+     ========================================================== */
+
+  resetVideo(videoElement) {
+    if (!videoElement) return;
+    try {
+      videoElement.pause();
+    } catch (error) {
+      console.warn('[IPTV] Erro ao pausar vídeo:', error);
+    }
+    videoElement.removeAttribute('src');
+    videoElement.load();
+  }
+
+  /* ==========================================================
+     PLAYER (REPRODUÇÃO DE CANAIS E MÍDIAS)
+     ========================================================== */
+
+  playStream(videoElement, streamUrl) {
+    if (!videoElement) {
+      console.error('[IPTV] Elemento #video-player não encontrado.');
+      return;
+    }
+
+    if (!streamUrl) {
+      console.error('[IPTV] URL do stream está vazia.');
+      alert('Não foi possível encontrar a URL deste conteúdo.');
+      return;
+    }
+
+    // Destrói instância HLS anterior
+    if (this.hlsPlayer) {
+      try {
+        this.hlsPlayer.destroy();
+      } catch (error) {
+        console.warn('[IPTV] Erro ao destruir HLS anterior:', error);
+      }
+      this.hlsPlayer = null;
+    }
+
+    this.resetVideo(videoElement);
+
+    const originalUrl = String(streamUrl).trim();
+    const finalStreamUrl = this.formatUrlWithProxy(originalUrl);
+    const streamType = this.detectStreamType(originalUrl);
+
+    console.log('[IPTV] INICIANDO STREAM:', {
+      tipo: this.currentType,
+      formato: streamType,
+      urlOriginal: originalUrl,
+      urlFinal: finalStreamUrl
+    });
+
+    /* --- REPRODUÇÃO HLS (.m3u8) --- */
+    if (streamType === 'hls' || this.currentType === 'live') {
+      const hlsSupported = typeof window.Hls !== 'undefined' && window.Hls.isSupported();
+
+      if (hlsSupported) {
+        console.log('[IPTV] Utilizando HLS.js.');
+
+        this.hlsPlayer = new window.Hls({
+          enableWorker: true,
+          lowLatencyMode: true,
+          backBufferLength: 90,
+          liveSyncDurationCount: 3,
+          maxBufferLength: 30,
+          xhrSetup: (xhr, url) => {
+            if (window.location.protocol === 'https:' && String(url).toLowerCase().startsWith('http://')) {
+              const proxiedUrl = 'https://corsproxy.io/?url=' + encodeURIComponent(url);
+              xhr.open('GET', proxiedUrl, true);
+            }
+          }
+        });
+
+        this.hlsPlayer.loadSource(finalStreamUrl);
+        this.hlsPlayer.attachMedia(videoElement);
+
+        this.hlsPlayer.on(window.Hls.Events.MANIFEST_PARSED, () => {
+          videoElement.play().catch(error => console.warn('[IPTV] Autoplay bloqueado:', error));
+        });
+
+        this.hlsPlayer.on(window.Hls.Events.ERROR, (event, data) => {
+          console.error('[IPTV] Erro HLS:', data);
+          if (data && data.fatal) {
+            if (data.type === window.Hls.ErrorTypes.NETWORK_ERROR) {
+              this.hlsPlayer.startLoad();
+            } else if (data.type === window.Hls.ErrorTypes.MEDIA_ERROR) {
+              this.hlsPlayer.recoverMediaError();
+            } else {
+              this.hlsPlayer.destroy();
+            }
+          }
+        });
+        return;
+      }
+
+      // HLS Nativo (ex: Safari / iOS)
+      if (videoElement.canPlayType('application/vnd.apple.mpegurl')) {
+        console.log('[IPTV] Utilizando HLS nativo.');
+        videoElement.src = finalStreamUrl;
+        videoElement.play().catch(error => console.warn('[IPTV] Autoplay bloqueado:', error));
+        return;
+      }
+
+      alert('Seu navegador não suporta reprodução HLS.');
+      return;
+    }
+
+    /* --- REPRODUÇÃO MP4 OU NATIVA --- */
+    videoElement.src = finalStreamUrl;
+    videoElement.play().catch(error => {
+      console.error('[IPTV] Erro ao reproduzir vídeo:', error);
+      alert('Não foi possível reproduzir este vídeo.');
+    });
+  }
+
+  stopStream(videoElement) {
+    if (this.hlsPlayer) {
+      try {
+        this.hlsPlayer.destroy();
+      } catch (error) {
+        console.warn('[IPTV] Erro ao destruir HLS:', error);
+      }
+      this.hlsPlayer = null;
+    }
+    if (videoElement) {
+      this.resetVideo(videoElement);
+    }
+  }
+}
+
+/* ============================================================
+   INSTÂNCIA GLOBAL E INICIALIZAÇÃO
+   ============================================================ */
+
+const iptv = new IPTVEngine();
+
+document.addEventListener('DOMContentLoaded', () => {
+  console.log('[IPTV] Aplicação iniciada.');
+
+  if (window.lucide) {
+    lucide.createIcons();
+  }
+
+  startClock();
+
+  const searchInput = document.getElementById('catalog-search-input');
+  if (searchInput) {
+    searchInput.addEventListener('input', event => {
+      const query = String(event.target.value || '').toLowerCase().trim();
+      iptv.filteredItems = iptv.currentItems.filter(item => {
+        const name = String(item.name || '').toLowerCase();
+        const title = String(item.title || '').toLowerCase();
+        return name.includes(query) || title.includes(query);
+      });
+      renderCatalogGrid(iptv.filteredItems);
     });
   }
 });
 
-/* =========================================================
-   AGRUPAMENTO POR CATEGORIAS OFICIAIS DO SERVIDOR IPTV
-   ========================================================= */
+/* ============================================================
+   FUNÇÕES AUXILIARES DE INTERFACE
+   ============================================================ */
 
-function categorizeContent(section, items, categoriesList) {
-  const groups = { 'TODOS': [...items] };
-
-  // 1. Cria os grupos com base nas categorias oficiais vindas da API
-  const categoryMap = {};
-  if (Array.isArray(categoriesList)) {
-    categoriesList.forEach(cat => {
-      const catName = cat.category_name.trim().toUpperCase();
-      categoryMap[cat.category_id] = catName;
-      if (!groups[catName]) groups[catName] = [];
-    });
-  }
-
-  // 2. Associa cada item (canal, filme ou série) à sua respetiva categoria
-  items.forEach(item => {
-    let catName = categoryMap[item.category_id];
-
-    // Se o servidor não informou categoria válida, faz a busca pelo nome
-    if (!catName) {
-      const nameUpper = item.name.toUpperCase();
-      if (section === 'live') {
-        if (nameUpper.includes('GLOBO')) catName = 'CANAIS GLOBO';
-        else if (nameUpper.includes('SBT')) catName = 'CANAIS SBT';
-        else if (nameUpper.includes('RECORD')) catName = 'CANAIS RECORD';
-        else if (nameUpper.includes('TELECINE')) catName = 'TELECINE';
-        else if (nameUpper.includes('HBO') || nameUpper.includes('MAX')) catName = 'HBO / MAX';
-        else if (nameUpper.includes('SPORTV') || nameUpper.includes('ESPN') || nameUpper.includes('PREMIERE')) catName = 'DESPORTOS';
-        else if (nameUpper.includes('INFANTIL') || nameUpper.includes('DISNEY') || nameUpper.includes('NICK')) catName = 'INFANTIL';
-        else catName = 'OUTROS';
-      } else {
-        catName = 'OUTROS';
-      }
-    }
-
-    if (!groups[catName]) groups[catName] = [];
-    groups[catName].push(item);
-  });
-
-  // Remove categorias vazias
-  Object.keys(groups).forEach(key => {
-    if (groups[key].length === 0 && key !== 'TODOS') {
-      delete groups[key];
-    }
-  });
-
-  return groups;
+function startClock() {
+  const clockEl = document.getElementById('clock');
+  if (!clockEl) return;
+  const updateClock = () => {
+    clockEl.innerText = new Date().toLocaleTimeString('pt-BR');
+  };
+  updateClock();
+  setInterval(updateClock, 1000);
 }
 
-function renderCategorySidebar(groups) {
-  const sidebar = document.getElementById('category-list');
-  if (!sidebar) return;
-
-  sidebar.innerHTML = '';
-  const categories = Object.keys(groups);
-
-  categories.forEach(cat => {
-    const li = document.createElement('li');
-    li.className = 'category-item' + (cat === activeCategory ? ' active' : '');
-    li.innerHTML = `<span>${cat}</span> <span class="count">${groups[cat].length}</span>`;
-
-    li.onclick = () => {
-      activeCategory = cat;
-      document.querySelectorAll('.category-item').forEach(i => i.classList.remove('active'));
-      li.classList.add('active');
-      renderCatalogGrid(groups[cat]);
-    };
-
-    sidebar.appendChild(li);
-  });
+function switchScreen(screenId) {
+  document.querySelectorAll('.screen').forEach(screen => screen.classList.remove('active'));
+  const target = document.getElementById(screenId);
+  if (target) target.classList.add('active');
 }
 
-/* =========================================================
-   CONEXÃO COM A API XTREAM CODES E BUSCA COMPLETA
-   ========================================================= */
+async function handleLogin(event) {
+  event.preventDefault();
+  const urlInput = document.getElementById('server-url');
+  const userInput = document.getElementById('username');
+  const passInput = document.getElementById('password');
 
-async function connectXtream(baseUrl, user, pass) {
-  const cleanUrl = baseUrl.replace(/\/$/, "");
-  const authUrl = `${cleanUrl}/player_api.php?username=${encodeURIComponent(user)}&password=${encodeURIComponent(pass)}`;
+  const btn = event.target.querySelector('button');
+  let originalText = btn ? btn.innerText : 'ENTRAR';
 
-  const authTest = await fetchWithFallback(authUrl);
-  if (!authTest || !authTest.user_info || authTest.user_info.auth === 0) {
-    throw new Error('Utilizador ou palavra-passe inválidos.');
+  if (btn) {
+    btn.innerText = 'A LIGAR...';
+    btn.disabled = true;
   }
 
-  // Busca paralela para máxima performance
-  const [
-    liveCats, vodCats, seriesCats,
-    liveData, vodData, seriesData
-  ] = await Promise.all([
-    fetchWithFallback(`${authUrl}&action=get_live_categories`).catch(() => []),
-    fetchWithFallback(`${authUrl}&action=get_vod_categories`).catch(() => []),
-    fetchWithFallback(`${authUrl}&action=get_series_categories`).catch(() => []),
-    fetchWithFallback(`${authUrl}&action=get_live_streams`).catch(() => []),
-    fetchWithFallback(`${authUrl}&action=get_vod_streams`).catch(() => []),
-    fetchWithFallback(`${authUrl}&action=get_series`).catch(() => [])
-  ]);
+  const result = await iptv.login(
+    urlInput ? urlInput.value : '',
+    userInput ? userInput.value : '',
+    passInput ? passInput.value : ''
+  );
 
-  categoriesData.live = liveCats;
-  categoriesData.movies = vodCats;
-  categoriesData.series = seriesCats;
-
-  if (Array.isArray(liveData)) {
-    currentData.live = liveData.map(i => ({
-      name: i.name || 'Canal',
-      cover: getValidCoverUrl(i.stream_icon, cleanUrl),
-      category_id: i.category_id,
-      url: `${cleanUrl}/live/${user}/${pass}/${i.stream_id}.m3u8`
-    }));
+  if (btn) {
+    btn.innerText = originalText;
+    btn.disabled = false;
   }
 
-  if (Array.isArray(vodData)) {
-    currentData.movies = vodData.map(i => ({
-      name: i.name || 'Filme',
-      cover: getValidCoverUrl(i.stream_icon || i.cover, cleanUrl),
-      category_id: i.category_id,
-      url: `${cleanUrl}/movie/${user}/${pass}/${i.stream_id}.${i.container_extension || 'mp4'}`
-    }));
-  }
-
-  if (Array.isArray(seriesData)) {
-    currentData.series = seriesData.map(i => ({
-      name: i.name || 'Série',
-      cover: getValidCoverUrl(i.cover || i.stream_icon, cleanUrl),
-      category_id: i.category_id,
-      series_id: i.series_id,
-      isSeries: true
-    }));
+  if (result.success) {
+    switchScreen('dashboard-screen');
+  } else {
+    alert(result.message);
   }
 }
 
-/* =========================================================
-   NAVEGAÇÃO, EXIBIÇÃO E PLAYER
-   ========================================================= */
+function logout() {
+  const video = document.getElementById('video-player');
+  iptv.stopStream(video);
+  switchScreen('login-screen');
+}
 
-function openCatalog(section) {
-  activeSection = section;
-  activeCategory = 'TODOS';
+async function openCatalog(type) {
+  iptv.currentType = type;
+  iptv.selectedItemIndex = -1;
 
-  const titleElem = document.getElementById('catalog-title');
-  if (titleElem) titleElem.innerText = section.toUpperCase();
+  const catalogTitle = document.getElementById('catalog-title');
+  const labels = { live: 'CANAIS AO VIVO', movies: 'FILMES (VOD)', series: 'SÉRIES' };
+  if (catalogTitle) catalogTitle.innerText = labels[type] || 'CATÁLOGO';
 
   switchScreen('catalog-screen');
 
-  groupedData = categorizeContent(section, currentData[section] || [], categoriesData[section] || []);
-  renderCategorySidebar(groupedData);
-  renderCatalogGrid(groupedData['TODOS'] || []);
+  const categoriesList = document.getElementById('category-list');
+  if (categoriesList) categoriesList.innerHTML = '<li class="category-item">A carregar...</li>';
+
+  const grid = document.getElementById('catalog-grid');
+  if (grid) grid.innerHTML = '<p style="grid-column:1/-1;text-align:center;color:#888;">Selecione uma categoria...</p>';
+
+  const categories = await iptv.getCategories(type);
+  iptv.categories = categories;
+  renderCategorySidebar(categories);
+
+  if (categories && categories.length > 0) {
+    await selectCategory(categories[0].category_id);
+  }
+}
+
+function renderCategorySidebar(categories) {
+  const list = document.getElementById('category-list');
+  if (!list) return;
+
+  list.innerHTML = '';
+  if (!categories || categories.length === 0) {
+    list.innerHTML = '<li class="category-item">Nenhuma categoria encontrada</li>';
+    return;
+  }
+
+  categories.forEach(category => {
+    const li = document.createElement('li');
+    li.className = 'category-item';
+    li.dataset.id = category.category_id;
+
+    const span = document.createElement('span');
+    span.innerText = category.category_name || 'Sem categoria';
+
+    li.appendChild(span);
+    li.onclick = () => selectCategory(category.category_id);
+    list.appendChild(li);
+  });
+}
+
+async function selectCategory(categoryId) {
+  iptv.currentCategoryId = categoryId;
+
+  document.querySelectorAll('.category-item').forEach(element => {
+    element.classList.toggle('active', element.dataset.id == categoryId);
+  });
+
+  const grid = document.getElementById('catalog-grid');
+  if (grid) grid.innerHTML = '<p style="grid-column:1/-1;text-align:center;color:#888;">A carregar conteúdos...</p>';
+
+  const items = await iptv.getStreams(iptv.currentType, categoryId);
+  iptv.currentItems = items;
+  iptv.filteredItems = items;
+  renderCatalogGrid(items);
 }
 
 function renderCatalogGrid(items) {
@@ -197,207 +557,205 @@ function renderCatalogGrid(items) {
   if (!grid) return;
 
   grid.innerHTML = '';
-  const defaultPlaceholder = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='300' height='450' viewBox='0 0 300 450'><rect width='100%' height='100%' fill='%23121a14'/><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' fill='%2300ff66' font-family='sans-serif' font-size='18'>SEM LOGO</text></svg>";
-
   if (!items || items.length === 0) {
-    grid.innerHTML = '<p style="padding: 20px; color: #888; grid-column: 1/-1;">Nenhum conteúdo nesta categoria.</p>';
+    grid.innerHTML = '<p style="grid-column:1/-1;text-align:center;color:#888;">Nenhum conteúdo nesta categoria.</p>';
     return;
   }
 
-  items.forEach(item => {
+  const svgPlaceholder = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="150" height="225" viewBox="0 0 150 225">
+      <rect width="150" height="225" fill="#121a14"/>
+      <text x="75" y="112" dominant-baseline="middle" text-anchor="middle" fill="#888888" font-size="12" font-family="Arial, sans-serif">Sem Imagem</text>
+    </svg>`;
+  const placeholderImg = 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svgPlaceholder);
+
+  items.forEach((item, index) => {
     const card = document.createElement('div');
     card.className = 'media-card';
-    const imgSrc = (item.cover && item.cover.trim() !== '' && !item.cover.includes('null')) ? item.cover : defaultPlaceholder;
 
-    card.innerHTML = `
-      <img class="media-poster" src="${imgSrc}" alt="${item.name}" loading="lazy" referrerpolicy="no-referrer"
-           onerror="if (this.src !== '${defaultPlaceholder}') { this.onerror = null; this.src = 'https://images.weserv.nl/?url=' + encodeURIComponent(this.src); } else { this.src = '${defaultPlaceholder}'; }" />
-      <span title="${item.name}">${item.name}</span>
-    `;
+    const name = item.name || item.title || 'Sem título';
+    let rawIcon = String(item.stream_icon || item.cover || '').trim();
 
-    card.onclick = () => {
-      if (item.isSeries) {
-        loadSeriesEpisodes(item);
-      } else {
-        startPlayerView(item, items);
-      }
+    const image = document.createElement('img');
+    image.className = 'media-poster';
+    image.alt = name;
+    image.loading = 'lazy';
+    image.src = rawIcon ? iptv.formatUrlWithProxy(rawIcon) : placeholderImg;
+
+    image.onerror = function() {
+      this.onerror = null;
+      this.src = placeholderImg;
     };
+
+    const title = document.createElement('span');
+    title.title = name;
+    title.innerText = name;
+
+    card.appendChild(image);
+    card.appendChild(title);
+    card.onclick = () => onMediaCardClick(item, index);
 
     grid.appendChild(card);
   });
 }
 
-function startPlayerView(selectedItem, fullList) {
-  currentPlaylist = fullList;
-  currentIndex = fullList.findIndex(i => i.name === selectedItem.name);
-  if (currentIndex === -1) currentIndex = 0;
+async function onMediaCardClick(item, index) {
+  iptv.selectedItemIndex = index;
 
-  switchScreen('player-screen');
-  renderSidebarList(currentPlaylist, currentPlaylist[currentIndex]);
-  playMedia(currentPlaylist[currentIndex]);
+  if (iptv.currentType === 'series') {
+    switchScreen('player-screen');
+    await loadSeriesEpisodes(item);
+    return;
+  }
+
+  const streamId = item.stream_id;
+  if (streamId === undefined || streamId === null || streamId === '') {
+    alert('Este conteúdo não possui um stream_id válido.');
+    return;
+  }
+
+  const streamUrl = iptv.getStreamUrl(
+    streamId,
+    item.container_extension || null,
+    iptv.currentType,
+    item.direct_source || item.directSource || null
+  );
+
+  startPlayerScreen(item.name || item.title || 'Reproduzindo', streamUrl);
+  renderSidebarPlaylist(iptv.filteredItems, index);
 }
 
-function playMedia(item) {
-  const video = document.getElementById('video-player');
+async function loadSeriesEpisodes(seriesItem) {
   const titleEl = document.getElementById('playing-title');
-  if (titleEl) titleEl.innerText = item.name;
+  if (titleEl) titleEl.innerText = seriesItem.name || 'Série';
 
-  if (hlsPlayer) {
-    hlsPlayer.destroy();
-    hlsPlayer = null;
+  const sidebarList = document.getElementById('sidebar-list');
+  if (!sidebarList) return;
+
+  sidebarList.innerHTML = '<li class="sidebar-item">A carregar episódios...</li>';
+
+  const data = await iptv.getSeriesInfo(seriesItem.series_id);
+  if (!data || !data.episodes) {
+    sidebarList.innerHTML = '<li class="sidebar-item">Nenhum episódio encontrado.</li>';
+    return;
   }
 
-  let streamUrl = item.url;
+  sidebarList.innerHTML = '';
+  let firstEpisodeUrl = null;
+  let firstEpisodeTitle = '';
 
-  if (Hls.isSupported() && streamUrl.includes('.m3u8')) {
-    hlsPlayer = new Hls({ enableWorker: true });
-    hlsPlayer.loadSource(streamUrl);
-    hlsPlayer.attachMedia(video);
-    hlsPlayer.on(Hls.Events.MANIFEST_PARSED, () => video.play().catch(() => {}));
-  } else {
-    video.src = streamUrl;
-    video.play().catch(() => {});
+  Object.keys(data.episodes).forEach(seasonNum => {
+    const header = document.createElement('li');
+    header.className = 'sidebar-item';
+    header.style.cssText = 'font-weight:bold; color:#00ff66; background:#0d140e;';
+    header.innerText = 'TEMPORADA ' + seasonNum;
+    sidebarList.appendChild(header);
+
+    const episodes = Array.isArray(data.episodes[seasonNum]) ? data.episodes[seasonNum] : [];
+
+    episodes.forEach(episode => {
+      const epLi = document.createElement('li');
+      epLi.className = 'sidebar-item';
+      epLi.innerText = 'E' + episode.episode_num + ' - ' + (episode.title || 'Episódio');
+
+      const streamUrl = iptv.getStreamUrl(episode.id, episode.container_extension || 'mp4', 'series');
+
+      if (!firstEpisodeUrl) {
+        firstEpisodeUrl = streamUrl;
+        firstEpisodeTitle = `${seriesItem.name || 'Série'} - T${seasonNum}:E${episode.episode_num}`;
+      }
+
+      epLi.onclick = () => {
+        document.querySelectorAll('.sidebar-item').forEach(el => el.classList.remove('active'));
+        epLi.classList.add('active');
+        if (titleEl) titleEl.innerText = `${seriesItem.name || 'Série'} - T${seasonNum}:E${episode.episode_num}`;
+        iptv.playStream(document.getElementById('video-player'), streamUrl);
+      };
+
+      sidebarList.appendChild(epLi);
+    });
+  });
+
+  if (firstEpisodeUrl) {
+    if (titleEl) titleEl.innerText = firstEpisodeTitle;
+    iptv.playStream(document.getElementById('video-player'), firstEpisodeUrl);
   }
 }
 
-function playMediaControl() { document.getElementById('video-player')?.play(); }
-function pauseMediaControl() { document.getElementById('video-player')?.pause(); }
+function startPlayerScreen(title, streamUrl) {
+  switchScreen('player-screen');
+  const titleEl = document.getElementById('playing-title');
+  if (titleEl) titleEl.innerText = title || 'Reproduzindo';
+
+  const video = document.getElementById('video-player');
+  iptv.playStream(video, streamUrl);
+}
+
+function renderSidebarPlaylist(items, currentIndex) {
+  const sidebarList = document.getElementById('sidebar-list');
+  if (!sidebarList) return;
+
+  sidebarList.innerHTML = '';
+  if (!items || items.length === 0) {
+    sidebarList.innerHTML = '<li class="sidebar-item">Nenhum conteúdo disponível.</li>';
+    return;
+  }
+
+  items.forEach((item, index) => {
+    const li = document.createElement('li');
+    li.className = 'sidebar-item';
+    if (index === currentIndex) li.classList.add('active');
+
+    const name = item.name || item.title || 'Sem título';
+    li.innerText = name;
+
+    li.onclick = () => {
+      iptv.selectedItemIndex = index;
+      renderSidebarPlaylist(items, index);
+
+      const streamUrl = iptv.getStreamUrl(
+        item.stream_id,
+        item.container_extension || null,
+        iptv.currentType,
+        item.direct_source || item.directSource || null
+      );
+
+      startPlayerScreen(name, streamUrl);
+    };
+
+    sidebarList.appendChild(li);
+  });
+}
+
+/* ============================================================
+   CONTROLES DO PLAYER
+   ============================================================ */
+
+function playMediaControl() {
+  const video = document.getElementById('video-player');
+  if (video) video.play().catch(error => console.warn('[IPTV] Não foi possível iniciar:', error));
+}
+
+function pauseMediaControl() {
+  const video = document.getElementById('video-player');
+  if (video) video.pause();
+}
+
 function stopMediaControl() {
   const video = document.getElementById('video-player');
-  if (video) { video.pause(); video.currentTime = 0; }
+  if (video) iptv.stopStream(video);
 }
 
 function nextMedia() {
-  if (currentIndex < currentPlaylist.length - 1) {
-    currentIndex++;
-    const nextItem = currentPlaylist[currentIndex];
-    renderSidebarList(currentPlaylist, nextItem);
-    playMedia(nextItem);
+  if (iptv.selectedItemIndex >= 0 && iptv.selectedItemIndex < iptv.filteredItems.length - 1) {
+    const nextIndex = iptv.selectedItemIndex + 1;
+    onMediaCardClick(iptv.filteredItems[nextIndex], nextIndex);
   }
 }
 
 function prevMedia() {
-  if (currentIndex > 0) {
-    currentIndex--;
-    const prevItem = currentPlaylist[currentIndex];
-    renderSidebarList(currentPlaylist, prevItem);
-    playMedia(prevItem);
+  if (iptv.selectedItemIndex > 0) {
+    const previousIndex = iptv.selectedItemIndex - 1;
+    onMediaCardClick(iptv.filteredItems[previousIndex], previousIndex);
   }
 }
-
-async function loadSeriesEpisodes(series) {
-  const { url, user, pass } = currentCredentials;
-  const cleanUrl = url.replace(/\/$/, "");
-  const episodesUrl = `${cleanUrl}/player_api.php?username=${encodeURIComponent(user)}&password=${encodeURIComponent(pass)}&action=get_series_info&series_id=${series.series_id}`;
-
-  try {
-    const data = await fetchWithFallback(episodesUrl);
-    let episodesList = [];
-
-    if (data && data.episodes) {
-      Object.keys(data.episodes).forEach(season => {
-        data.episodes[season].forEach(ep => {
-          episodesList.push({
-            name: `T${season}:E${ep.episode_num} - ${ep.title || 'Episódio'}`,
-            cover: getValidCoverUrl(ep.info?.movie_image || series.cover, cleanUrl),
-            url: `${cleanUrl}/series/${user}/${pass}/${ep.id}.${ep.container_extension || 'mp4'}`
-          });
-        });
-      });
-    }
-
-    if (episodesList.length > 0) {
-      startPlayerView(episodesList[0], episodesList);
-    } else {
-      alert('Nenhum episódio encontrado.');
-    }
-  } catch (err) {
-    alert('Erro ao carregar episódios.');
-  }
-}
-
-function renderSidebarList(items, currentActive) {
-  const sidebar = document.getElementById('sidebar-list');
-  if (!sidebar) return;
-
-  sidebar.innerHTML = '';
-  items.forEach((item, idx) => {
-    const li = document.createElement('li');
-    li.className = 'sidebar-item' + (idx === currentIndex ? ' active' : '');
-    li.innerHTML = `<span>${item.name}</span>`;
-
-    li.onclick = () => {
-      currentIndex = idx;
-      document.querySelectorAll('.sidebar-item').forEach(i => i.classList.remove('active'));
-      li.classList.add('active');
-      playMedia(item);
-    };
-
-    sidebar.appendChild(li);
-  });
-}
-
-async function fetchWithFallback(url) {
-  try {
-    const res = await fetch(url);
-    if (res.ok) return await res.json();
-  } catch (e) {}
-
-  try {
-    const res1 = await fetch("https://api.allorigins.win/raw?url=" + encodeURIComponent(url));
-    if (res1.ok) return await res1.json();
-  } catch (e) {}
-
-  const res2 = await fetch("https://corsproxy.io/?" + encodeURIComponent(url));
-  return await res2.json();
-}
-
-function getValidCoverUrl(coverPath, baseUrl) {
-  if (!coverPath || typeof coverPath !== 'string' || coverPath.trim() === '') return '';
-  let fullUrl = coverPath.trim();
-  if (!fullUrl.startsWith('http://') && !fullUrl.startsWith('https://')) {
-    fullUrl = baseUrl.replace(/\/$/, "") + (fullUrl.startsWith('/') ? fullUrl : '/' + fullUrl);
-  }
-  return fullUrl.startsWith('http://') ? "https://images.weserv.nl/?url=" + encodeURIComponent(fullUrl) : fullUrl;
-}
-
-function switchScreen(id) {
-  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-  document.getElementById(id)?.classList.add('active');
-  lucide.createIcons();
-}
-
-async function autoLogin(session) {
-  currentCredentials = session;
-  await connectXtream(session.url, session.user, session.pass);
-  switchScreen('dashboard-screen');
-}
-
-async function handleLogin(e) {
-  e.preventDefault();
-  const submitBtn = document.querySelector('.btn-signin');
-  if (submitBtn) { submitBtn.innerText = "AUTENTICANDO..."; submitBtn.disabled = true; }
-
-  const url = document.getElementById('server-url').value.trim();
-  const user = document.getElementById('username')?.value.trim() || '';
-  const pass = document.getElementById('password')?.value.trim() || '';
-
-  currentCredentials = { url, user, pass };
-
-  try {
-    await connectXtream(url, user, pass);
-    localStorage.setItem('xc_user_session', JSON.stringify({ url, user, pass }));
-    switchScreen('dashboard-screen');
-  } catch (err) {
-    alert('Erro de conexão: ' + err.message);
-  } finally {
-    if (submitBtn) { submitBtn.innerText = "ENTRAR"; submitBtn.disabled = false; }
-  }
-}
-
-document.getElementById('catalog-search-input')?.addEventListener('input', (e) => {
-  const term = e.target.value.toLowerCase();
-  const baseItems = groupedData[activeCategory] || [];
-  const filtered = baseItems.filter(i => i.name.toLowerCase().includes(term));
-  renderCatalogGrid(filtered);
-});
