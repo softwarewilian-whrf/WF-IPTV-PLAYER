@@ -40,6 +40,11 @@ window.addEventListener('DOMContentLoaded', () => {
   }
 });
 
+// Função auxiliar exigida pelo HTML para alternar campos de servidor se necessário
+function toggleFields() {
+  // Mantido para compatibilidade com o evento onchange do index.html
+}
+
 /* =========================================================
    AGRUPAMENTO POR CATEGORIAS OFICIAIS DO SERVIDOR IPTV
    ========================================================= */
@@ -112,12 +117,14 @@ function renderCategorySidebar(groups) {
 }
 
 /* =========================================================
-   CONEXÃO COM A API XTREAM CODES E BUSCA ROBUSTA (CORS FIX)
+   CONEXÃO COM A API E DEFINIÇÃO DE LINKS HTTPS SEGUROS
    ========================================================= */
 
 async function connectXtream(baseUrl, user, pass) {
-  const cleanUrl = baseUrl.replace(/\/$/, "");
-  const authUrl = `${cleanUrl}/player_api.php?username=${encodeURIComponent(user)}&password=${encodeURIComponent(pass)}`;
+  const isVercel = window.location.hostname.includes('vercel.app') || (window.location.hostname !== 'localhost' && !window.location.hostname.includes('github.io'));
+  const proxyBase = isVercel ? '/api-proxy' : baseUrl.replace(/\/$/, "");
+  
+  const authUrl = `${proxyBase}/player_api.php?username=${encodeURIComponent(user)}&password=${encodeURIComponent(pass)}`;
 
   const authTest = await fetchWithFallback(authUrl);
   if (!authTest || !authTest.user_info || authTest.user_info.auth === 0) {
@@ -140,28 +147,37 @@ async function connectXtream(baseUrl, user, pass) {
   categoriesData.movies = vodCats;
   categoriesData.series = seriesCats;
 
+  let cleanServerUrl = baseUrl.replace(/\/$/, "");
+  if (cleanServerUrl.startsWith('http://')) {
+    cleanServerUrl = cleanServerUrl.replace('http://', 'https://');
+  }
+
+  // CORREÇÃO: Forçar formato .m3u8 (HLS) para os canais ao vivo funcionarem no browser
   if (Array.isArray(liveData)) {
     currentData.live = liveData.map(i => ({
       name: i.name || 'Canal',
-      cover: getValidCoverUrl(i.stream_icon, cleanUrl),
+      cover: getValidCoverUrl(i.stream_icon, cleanServerUrl),
       category_id: i.category_id,
-      url: `${cleanUrl}/live/${user}/${pass}/${i.stream_id}.m3u8`
+      url: `${cleanServerUrl}/live/${user}/${pass}/${i.stream_id}.m3u8`
     }));
   }
 
+  // CORREÇÃO: Forçar formato .mp4 universal para os filmes abrirem sem falhas de codec/container
   if (Array.isArray(vodData)) {
-    currentData.movies = vodData.map(i => ({
-      name: i.name || 'Filme',
-      cover: getValidCoverUrl(i.stream_icon || i.cover, cleanUrl),
-      category_id: i.category_id,
-      url: `${cleanUrl}/movie/${user}/${pass}/${i.stream_id}.${i.container_extension || 'mp4'}`
-    }));
+    currentData.movies = vodData.map(i => {
+      return {
+        name: i.name || 'Filme',
+        cover: getValidCoverUrl(i.stream_icon || i.cover, cleanServerUrl),
+        category_id: i.category_id,
+        url: `${cleanServerUrl}/movie/${user}/${pass}/${i.stream_id}.mp4`
+      };
+    });
   }
 
   if (Array.isArray(seriesData)) {
     currentData.series = seriesData.map(i => ({
       name: i.name || 'Série',
-      cover: getValidCoverUrl(i.cover || i.stream_icon, cleanUrl),
+      cover: getValidCoverUrl(i.cover || i.stream_icon, cleanServerUrl),
       category_id: i.category_id,
       series_id: i.series_id,
       isSeries: true
@@ -233,7 +249,7 @@ function startPlayerView(selectedItem, fullList) {
 }
 
 /* =========================================================
-   PLAYER DE VÍDEO CORRIGIDO (FORÇA HTTPS NO STREAM)
+   PLAYER DE VÍDEO
    ========================================================= */
 
 function playMedia(item) {
@@ -246,13 +262,12 @@ function playMedia(item) {
     hlsPlayer = null;
   }
 
-  // Força HTTPS no link do canal para evitar bloqueio de Mixed Content do GitHub Pages
   let streamUrl = item.url;
   if (streamUrl && streamUrl.startsWith('http://')) {
     streamUrl = streamUrl.replace('http://', 'https://');
   }
 
-  if (Hls.isSupported() && streamUrl.includes('.m3u8')) {
+  if (Hls.isSupported() && (streamUrl.includes('.m3u8') || streamUrl.includes('.ts') || streamUrl.includes('live') || streamUrl.includes('movie'))) {
     hlsPlayer = new Hls({ 
       enableWorker: true,
       xhrSetup: function (xhr, url) {
@@ -298,8 +313,13 @@ function prevMedia() {
 
 async function loadSeriesEpisodes(series) {
   const { url, user, pass } = currentCredentials;
-  const cleanUrl = url.replace(/\/$/, "");
-  const episodesUrl = `${cleanUrl}/player_api.php?username=${encodeURIComponent(user)}&password=${encodeURIComponent(pass)}&action=get_series_info&series_id=${series.series_id}`;
+  let cleanUrl = url.replace(/\/$/, "");
+  if (cleanUrl.startsWith('http://')) cleanUrl = cleanUrl.replace('http://', 'https://');
+
+  const isVercel = window.location.hostname.includes('vercel.app') || (window.location.hostname !== 'localhost' && !window.location.hostname.includes('github.io'));
+  const proxyBase = isVercel ? '/api-proxy' : cleanUrl;
+  
+  const episodesUrl = `${proxyBase}/player_api.php?username=${encodeURIComponent(user)}&password=${encodeURIComponent(pass)}&action=get_series_info&series_id=${series.series_id}`;
 
   try {
     const data = await fetchWithFallback(episodesUrl);
@@ -308,8 +328,8 @@ async function loadSeriesEpisodes(series) {
     if (data && data.episodes) {
       Object.keys(data.episodes).forEach(season => {
         data.episodes[season].forEach(ep => {
-          let epUrl = `${cleanUrl}/series/${user}/${pass}/${ep.id}.${ep.container_extension || 'mp4'}`;
-          if (epUrl.startsWith('http://')) epUrl = epUrl.replace('http://', 'https://');
+          let ext = ep.container_extension || 'mp4';
+          let epUrl = `${cleanUrl}/series/${user}/${pass}/${ep.id}.${ext}`;
 
           episodesList.push({
             name: `T${season}:E${ep.episode_num} - ${ep.title || 'Episódio'}`,
@@ -351,30 +371,32 @@ function renderSidebarList(items, currentActive) {
   });
 }
 
-/* Sistema robusto de múltiplos proxies CORS para GitHub Pages */
 async function fetchWithFallback(url) {
   try {
     const res = await fetch(url);
-    if (res.ok) return await res.json();
+    if (res.ok) {
+      const text = await res.text();
+      try { return JSON.parse(text); } catch (err) {}
+    }
   } catch (e) {}
 
   try {
     const res1 = await fetch("https://corsproxy.io/?" + encodeURIComponent(url));
-    if (res1.ok) return await res1.json();
-  } catch (e) {}
-
-  try {
-    const res2 = await fetch("https://api.allorigins.win/get?url=" + encodeURIComponent(url));
-    if (res2.ok) {
-      const data = await res2.json();
-      if (data && data.contents) {
-        return JSON.parse(data.contents);
-      }
+    if (res1.ok) {
+      const text1 = await res1.text();
+      try { return JSON.parse(text1); } catch (err) {}
     }
   } catch (e) {}
 
-  const res3 = await fetch("https://api.allorigins.win/raw?url=" + encodeURIComponent(url));
-  return await res3.json();
+  try {
+    const res2 = await fetch("https://api.allorigins.win/raw?url=" + encodeURIComponent(url));
+    if (res2.ok) {
+      const text2 = await res2.text();
+      try { return JSON.parse(text2); } catch (err) {}
+    }
+  } catch (e) {}
+
+  throw new Error('Falha na resposta do servidor ou formato inválido.');
 }
 
 function getValidCoverUrl(coverPath, baseUrl) {
