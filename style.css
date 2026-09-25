@@ -23,18 +23,18 @@
   user-select: none;
 }
 
-body {
+html, body {
+  width: 100%;
+  min-height: 100%;
   background-color: var(--xbox-dark-base);
   color: var(--text-main);
-  height: 100vh;
-  width: 100vw;
-  overflow: hidden;
+  overflow-x: hidden;
 }
 
 .screen {
   display: none;
-  height: 100vh;
-  width: 100vw;
+  min-height: 100vh;
+  width: 100%;
   flex-direction: column;
 }
 
@@ -44,8 +44,8 @@ body {
 
 /* Scrollbar Personalizada */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-track {
@@ -65,7 +65,7 @@ body {
    ESTILOS DO LOGÓTIPO PERSONALIZADO
    ========================================================= */
 .custom-logo {
-  max-width: 160px;
+  max-width: clamp(100px, 20vw, 160px);
   max-height: 120px;
   height: auto;
   width: auto;
@@ -79,7 +79,7 @@ body {
 }
 
 .header-custom-logo {
-  height: 38px;
+  height: clamp(28px, 4vw, 38px);
   width: auto;
   max-width: 130px;
   object-fit: contain;
@@ -92,20 +92,26 @@ body {
 #login-screen {
   justify-content: center;
   align-items: center;
+  padding: 20px;
   background: radial-gradient(circle at center, #11261a 0%, #050806 100%);
 }
 
 .login-container {
-  width: 390px;
+  width: 100%;
+  max-width: 390px;
   display: flex;
   flex-direction: column;
   align-items: center;
   background: var(--glass-panel);
-  padding: 35px 30px;
+  padding: clamp(20px, 5vw, 35px) clamp(15px, 4vw, 30px);
   border-radius: 12px;
   border: 1px solid var(--xbox-border);
   box-shadow: 0 15px 35px rgba(0, 0, 0, 0.8), 0 0 25px rgba(0, 255, 102, 0.15);
   backdrop-filter: blur(12px);
+}
+
+.server-type-selector {
+  width: 100%;
 }
 
 .server-type-selector select,
@@ -195,20 +201,24 @@ body {
 #dashboard-screen {
   background: radial-gradient(ellipse at center, #11281b 0%, #050806 85%);
   justify-content: space-between;
-  padding: 20px 35px;
+  padding: 15px clamp(15px, 4vw, 35px);
+  gap: 20px;
 }
 
 .dash-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  height: 60px;
+  min-height: 60px;
+  flex-wrap: wrap;
+  gap: 10px;
 }
 
 .header-left {
   display: flex;
   align-items: center;
   gap: 15px;
+  flex-wrap: wrap;
 }
 
 .status-badge {
@@ -254,21 +264,23 @@ body {
   display: flex;
   justify-content: center;
   align-items: center;
-  gap: 45px;
+  gap: clamp(15px, 4vw, 45px);
+  flex-wrap: wrap;
+  padding: 20px 0;
 }
 
 .nav-circle {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 15px;
+  gap: 12px;
   cursor: pointer;
   transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
 .circle-icon {
-  width: 120px;
-  height: 120px;
+  width: clamp(80px, 15vw, 120px);
+  height: clamp(80px, 15vw, 120px);
   border-radius: 50%;
   background: radial-gradient(circle, rgba(0, 255, 102, 0.15) 0%, rgba(5, 15, 8, 0.85) 100%);
   border: 2px solid var(--xbox-border);
@@ -280,21 +292,22 @@ body {
 }
 
 .circle-icon i {
-  width: 52px;
-  height: 52px;
+  width: clamp(35px, 6vw, 52px);
+  height: clamp(35px, 6vw, 52px);
   color: #ffffff;
 }
 
 .nav-circle span {
   font-weight: 700;
-  font-size: 0.95rem;
+  font-size: clamp(0.75rem, 2vw, 0.95rem);
   letter-spacing: 1.5px;
   color: #e1e8e3;
   text-transform: uppercase;
+  text-align: center;
 }
 
 .nav-circle:hover {
-  transform: scale(1.12);
+  transform: scale(1.08);
 }
 
 .nav-circle:hover .circle-icon {
@@ -310,17 +323,21 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-wrap: wrap;
+  gap: 15px;
+  padding-top: 10px;
 }
 
 .footer-left, .footer-right {
   display: flex;
-  gap: 12px;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
 .foot-btn {
   background: rgba(0, 0, 0, 0.5);
   border: 1px solid var(--xbox-border);
-  padding: 10px 14px;
+  padding: 8px 12px;
   border-radius: 8px;
   color: #fff;
   display: flex;
@@ -328,13 +345,14 @@ body {
   align-items: center;
   gap: 5px;
   cursor: pointer;
-  min-width: 75px;
+  min-width: 65px;
+  flex: 1;
   transition: all 0.3s ease;
 }
 
 .foot-btn i {
-  width: 20px;
-  height: 20px;
+  width: 18px;
+  height: 18px;
   color: var(--xbox-green-glow);
 }
 
@@ -354,16 +372,18 @@ body {
 }
 
 /* =========================================================
-   3. NAVEGAÇÃO DE CONTEÚDO (CAPAS AMPLAS NO CENTRO)
+   3. NAVEGAÇÃO DE CONTEÚDO (PLAYER / CATÁLOGO)
    ========================================================= */
 .player-header {
-  height: 60px;
+  min-height: 60px;
   background: #080d0a;
   border-bottom: 1px solid var(--xbox-border);
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0 25px;
+  padding: 10px 20px;
+  flex-wrap: wrap;
+  gap: 10px;
 }
 
 .back-btn {
@@ -379,7 +399,7 @@ body {
 
 .player-body {
   display: flex;
-  height: calc(100vh - 60px);
+  flex: 1;
   width: 100%;
   overflow: hidden;
 }
@@ -435,8 +455,8 @@ body {
 /* Grade Ajustada para Apresentar Múltiplas Capas Sincronizadas */
 .content-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-  gap: 20px;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 15px;
   align-content: start;
   width: 100%;
 }
@@ -463,7 +483,7 @@ body {
 
 .media-poster {
   width: 100%;
-  height: 225px;
+  aspect-ratio: 2 / 3;
   object-fit: cover;
   background: rgba(0, 0, 0, 0.6);
 }
@@ -502,6 +522,7 @@ body {
   justify-content: center;
   align-items: center;
   z-index: 1000;
+  padding: 15px;
 }
 
 .modal-overlay.active {
@@ -511,9 +532,9 @@ body {
 .modal-content {
   background: #0d140e;
   border: 1px solid var(--xbox-border);
-  width: 90%;
+  width: 100%;
   max-width: 680px;
-  max-height: 85vh;
+  max-height: 90vh;
   border-radius: 12px;
   display: flex;
   flex-direction: column;
@@ -559,6 +580,7 @@ body {
   display: flex;
   align-items: center;
   gap: 12px;
+  flex-wrap: wrap;
 }
 
 .season-selector-wrapper label {
@@ -596,7 +618,7 @@ body {
 
 /* Estrutura Específica do Player em Modal */
 .video-modal-content {
-  width: 90%;
+  width: 100%;
   max-width: 960px;
   background: #000;
   border: 1px solid var(--xbox-border);
@@ -604,12 +626,16 @@ body {
 
 .player-modal-body {
   padding: 0;
-  height: 540px;
-  display: flex;
+  height: 0;
+  padding-bottom: 56.25%; /* Proporção 16:9 responsiva */
+  position: relative;
   background: #000;
 }
 
 .video-wrapper {
+  position: absolute;
+  top: 0;
+  left: 0;
   width: 100%;
   height: 100%;
 }
@@ -618,4 +644,61 @@ video {
   width: 100%;
   height: 100%;
   outline: none;
+  object-fit: contain;
+}
+
+/* =========================================================
+   5. MEDIA QUERIES PARA DISPOSITIVOS MÓVEIS E TABLETS
+   ========================================================= */
+
+/* Tablets / Telas Médias */
+@media (max-width: 900px) {
+  .player-body {
+    flex-direction: column;
+    overflow-y: auto;
+  }
+
+  .sidebar {
+    width: 100%;
+    min-width: 100%;
+    border-right: none;
+    border-bottom: 1px solid var(--xbox-border);
+  }
+
+  .main-content-area {
+    height: auto;
+  }
+}
+
+/* Dispositivos Móveis (Smartphones) */
+@media (max-width: 600px) {
+  #dashboard-screen {
+    justify-content: flex-start;
+    padding: 15px;
+  }
+
+  .dash-footer {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .footer-left, .footer-right {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .foot-btn {
+    padding: 6px 8px;
+    min-width: 0;
+  }
+
+  .content-grid {
+    grid-template-columns: repeat(auto-fill, minmax(105px, 1fr));
+    gap: 10px;
+  }
+
+  .media-card span {
+    font-size: 0.72rem;
+    padding: 6px 4px;
+  }
 }
