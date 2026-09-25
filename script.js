@@ -1,741 +1,182 @@
-/**
- * ============================================================
- * WF IPTV PLAYER - SCRIPT PRINCIPAL CORRIGIDO (SEM CORSPROXY 403)
- * ============================================================
- */
+// Configuração da API e Proxy
+const BASE_URL = 'https://nivok.xyz/player_api.php';
+const STREAM_BASE_URL = 'https://nivok.xyz/live';
+const PROXY_URL = 'https://rapid-voice-4ddf.softwarewilian.workers.dev/?url=';
 
-class IPTVEngine {
+// Variáveis globais da aplicação
+let globalUsername = '';
+let globalPassword = '';
+let hlsInstance = null;
 
-  constructor() {
-    this.serverUrl = '';
-    this.username = '';
-    this.password = '';
-    this.userInfo = null;
-    this.serverInfo = null;
-    this.hlsPlayer = null;
-    this.currentType = 'live';
-    this.categories = [];
-    this.currentCategoryId = null;
-    this.currentItems = [];
-    this.filteredItems = [];
-    this.selectedItemIndex = -1;
-  }
+// Elementos do DOM
+const loginSection = document.getElementById('login-section');
+const appSection = document.getElementById('app-section');
+const loginForm = document.getElementById('login-form');
+const usernameInput = document.getElementById('username');
+const passwordInput = document.getElementById('password');
+const categorySelect = document.getElementById('category-select');
+const streamList = document.getElementById('stream-list');
+const videoPlayer = document.getElementById('video-player');
 
-  /* ==========================================================
-     PROXY APENAS PARA REQUISIÇÕES HTTP (MIXED CONTENT)
-     ========================================================== */
+console.log('[IPTV] Aplicação iniciada.');
 
-  formatUrlWithProxy(url) {
-    if (!url) return '';
-    const cleanUrl = String(url).trim();
-    if (!cleanUrl) return '';
+// Evento de Submissão do Formulário de Login
+loginForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    globalUsername = usernameInput.value.trim();
+    globalPassword = passwordInput.value.trim();
 
-    // Se a página atual for HTTPS e a imagem/link for HTTP, ajusta
-    if (
-      window.location.protocol === 'https:' &&
-      cleanUrl.toLowerCase().startsWith('http://')
-    ) {
-      return 'https://api.allorigins.win/raw?url=' + encodeURIComponent(cleanUrl);
+    if (!globalUsername || !globalPassword) {
+        alert('Por favor, preencha o utilizador e a palavra-passe.');
+        return;
     }
 
-    return cleanUrl;
-  }
+    const authenticated = await authenticateUser(globalUsername, globalPassword);
+    if (authenticated) {
+        loginSection.style.display = 'none';
+        appSection.style.display = 'block';
+        await loadCategories();
+    } else {
+        alert('Falha na autenticação. Verifique os seus dados.');
+    }
+});
 
-  /* ==========================================================
-     FETCH JSON
-     ========================================================== */
-
-  async fetchJson(url, description) {
-    console.log('[IPTV] Requisição:', description || 'API');
+// 1. Autenticação na API
+async function authenticateUser(username, password) {
+    const url = `${BASE_URL}?username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}`;
+    console.log('[IPTV] Requisição: Autenticação');
     console.log('[IPTV] URL:', url);
 
     try {
-      const response = await fetch(url, {
-        method: 'GET',
-        cache: 'no-store'
-      });
+        const response = await fetch(PROXY_URL + encodeURIComponent(url));
+        const data = await response.json();
 
-      if (!response.ok) {
-        throw new Error('HTTP ' + response.status + ' - ' + response.statusText);
-      }
-
-      return await response.json();
+        if (data && data.user_info && data.user_info.auth === 1) {
+            console.log('[IPTV] Login realizado com sucesso.');
+            return true;
+        } else {
+            console.warn('[IPTV] Resposta de autenticação inválida:', data);
+            return false;
+        }
     } catch (error) {
-      console.error('[IPTV] Erro na requisição:', description || 'API', error);
-      throw error;
+        console.error('[IPTV] Erro ao autenticar:', error);
+        return false;
     }
-  }
-
-  /* ==========================================================
-     LOGIN XTREAM
-     ========================================================== */
-
-  async login(serverUrl, username, password) {
-    this.serverUrl = String(serverUrl || '').trim().replace(/\/+$/, '');
-    this.username = String(username || '').trim();
-    this.password = String(password || '').trim();
-
-    if (!this.serverUrl || !this.username || !this.password) {
-      return {
-        success: false,
-        message: 'Preencha servidor, utilizador e palavra-passe.'
-      };
-    }
-
-    const rawApiUrl =
-      this.serverUrl +
-      '/player_api.php?username=' +
-      encodeURIComponent(this.username) +
-      '&password=' +
-      encodeURIComponent(this.password);
-
-    try {
-      const data = await this.fetchJson(rawApiUrl, 'Autenticação');
-
-      if (data && data.user_info && Number(data.user_info.auth) === 1) {
-        this.userInfo = data.user_info;
-        this.serverInfo = data.server_info || null;
-
-        console.log('[IPTV] Login realizado com sucesso.');
-
-        return {
-          success: true,
-          user: this.userInfo,
-          server: this.serverInfo
-        };
-      }
-
-      console.error('[IPTV] Servidor recusou a autenticação.');
-      return {
-        success: false,
-        message: 'Utilizador ou palavra-passe inválidos.'
-      };
-
-    } catch (error) {
-      console.error('[IPTV] Erro de autenticação:', error);
-      return {
-        success: false,
-        message: 'Não foi possível conectar ao servidor. Verifique o endereço e os dados de acesso.'
-      };
-    }
-  }
-
-  /* ==========================================================
-     CATEGORIAS
-     ========================================================== */
-
-  async getCategories(type) {
-    const actionMap = {
-      live: 'get_live_categories',
-      movies: 'get_vod_categories',
-      series: 'get_series_categories'
-    };
-
-    const action = actionMap[type] || actionMap.live;
-
-    const rawUrl =
-      this.serverUrl +
-      '/player_api.php?username=' +
-      encodeURIComponent(this.username) +
-      '&password=' +
-      encodeURIComponent(this.password) +
-      '&action=' +
-      action;
-
-    try {
-      const data = await this.fetchJson(rawUrl, 'Categorias - ' + type);
-      return Array.isArray(data) ? data : [];
-    } catch (error) {
-      console.error('[IPTV] Erro ao procurar categorias:', type, error);
-      return [];
-    }
-  }
-
-  /* ==========================================================
-     STREAMS / CANAIS / FILMES / SÉRIES
-     ========================================================== */
-
-  async getStreams(type, categoryId = null) {
-    const actionMap = {
-      live: 'get_live_streams',
-      movies: 'get_vod_streams',
-      series: 'get_series'
-    };
-
-    const action = actionMap[type] || actionMap.live;
-
-    let rawUrl =
-      this.serverUrl +
-      '/player_api.php?username=' +
-      encodeURIComponent(this.username) +
-      '&password=' +
-      encodeURIComponent(this.password) +
-      '&action=' +
-      action;
-
-    if (categoryId !== null && categoryId !== undefined && categoryId !== '') {
-      rawUrl += '&category_id=' + encodeURIComponent(categoryId);
-    }
-
-    try {
-      const data = await this.fetchJson(rawUrl, 'Streams - ' + type);
-      return Array.isArray(data) ? data : [];
-    } catch (error) {
-      console.error('[IPTV] Erro ao carregar streams:', type, error);
-      return [];
-    }
-  }
-
-  /* ==========================================================
-     INFORMAÇÕES DA SÉRIE
-     ========================================================== */
-
-  async getSeriesInfo(seriesId) {
-    const rawUrl =
-      this.serverUrl +
-      '/player_api.php?username=' +
-      encodeURIComponent(this.username) +
-      '&password=' +
-      encodeURIComponent(this.password) +
-      '&action=get_series_info' +
-      '&series_id=' +
-      encodeURIComponent(seriesId);
-
-    try {
-      return await this.fetchJson(rawUrl, 'Informações da série');
-    } catch (error) {
-      console.error('[IPTV] Erro ao procurar episódios:', error);
-      return null;
-    }
-  }
-
-  /* ==========================================================
-     URL DO STREAM (CANAIS AO VIVO EM HLS)
-     ========================================================== */
-
-  getStreamUrl(streamId, containerExtension = null, type = 'live', directSource = null) {
-    if (directSource && String(directSource).trim() !== '') {
-      return String(directSource).trim();
-    }
-
-    if (streamId === null || streamId === undefined || streamId === '') {
-      console.error('[IPTV] stream_id inválido.');
-      return '';
-    }
-
-    const user = encodeURIComponent(this.username);
-    const pass = encodeURIComponent(this.password);
-    const id = encodeURIComponent(streamId);
-    let rawUrl = '';
-
-    if (type === 'live') {
-      rawUrl = `${this.serverUrl}/live/${user}/${pass}/${id}.m3u8`;
-    } 
-    else if (type === 'movies') {
-      let ext = containerExtension ? String(containerExtension).replace(/^\./, '') : 'mp4';
-      rawUrl = `${this.serverUrl}/movie/${user}/${pass}/${id}.${ext}`;
-    } 
-    else if (type === 'series') {
-      let ext = containerExtension ? String(containerExtension).replace(/^\./, '') : 'mp4';
-      rawUrl = `${this.serverUrl}/series/${user}/${pass}/${id}.${ext}`;
-    }
-
-    console.log('[IPTV] URL original do stream:', rawUrl);
-    return rawUrl;
-  }
-
-  /* ==========================================================
-     DETECTAR FORMATO
-     ========================================================== */
-
-  detectStreamType(streamUrl) {
-    const url = String(streamUrl || '').toLowerCase();
-
-    if (url.includes('.m3u8') || url.includes('m3u8')) return 'hls';
-    if (url.includes('.mp4')) return 'mp4';
-    if (url.includes('.ts')) return 'ts';
-
-    return 'unknown';
-  }
-
-  /* ==========================================================
-     LIMPAR PLAYER
-     ========================================================== */
-
-  resetVideo(videoElement) {
-    if (!videoElement) return;
-    try {
-      videoElement.pause();
-    } catch (error) {
-      console.warn('[IPTV] Erro ao pausar vídeo:', error);
-    }
-    videoElement.removeAttribute('src');
-    videoElement.load();
-  }
-
-  /* ==========================================================
-     PLAYER (REPRODUÇÃO DE CANAIS E MÍDIAS)
-     ========================================================== */
-
-  playStream(videoElement, streamUrl) {
-    if (!videoElement) {
-      console.error('[IPTV] Elemento #video-player não encontrado.');
-      return;
-    }
-
-    if (!streamUrl) {
-      console.error('[IPTV] URL do stream está vazia.');
-      alert('Não foi possível encontrar a URL deste conteúdo.');
-      return;
-    }
-
-    if (this.hlsPlayer) {
-      try {
-        this.hlsPlayer.destroy();
-      } catch (error) {
-        console.warn('[IPTV] Erro ao destruir HLS anterior:', error);
-      }
-      this.hlsPlayer = null;
-    }
-
-    this.resetVideo(videoElement);
-
-    const originalUrl = String(streamUrl).trim();
-    const streamType = this.detectStreamType(originalUrl);
-
-    console.log('[IPTV] INICIANDO STREAM DIRETO:', {
-      tipo: this.currentType,
-      formato: streamType,
-      url: originalUrl
-    });
-
-    /* --- REPRODUÇÃO HLS (.m3u8) --- */
-    if (streamType === 'hls' || this.currentType === 'live') {
-      const hlsSupported = typeof window.Hls !== 'undefined' && window.Hls.isSupported();
-
-      if (hlsSupported) {
-        console.log('[IPTV] Utilizando HLS.js.');
-
-        this.hlsPlayer = new window.Hls({
-          enableWorker: true,
-          lowLatencyMode: true,
-          backBufferLength: 90,
-          liveSyncDurationCount: 3,
-          maxBufferLength: 30
-        });
-
-        this.hlsPlayer.loadSource(originalUrl);
-        this.hlsPlayer.attachMedia(videoElement);
-
-        this.hlsPlayer.on(window.Hls.Events.MANIFEST_PARSED, () => {
-          videoElement.play().catch(error => console.warn('[IPTV] Autoplay bloqueado:', error));
-        });
-
-        this.hlsPlayer.on(window.Hls.Events.ERROR, (event, data) => {
-          console.error('[IPTV] Erro HLS:', data);
-          if (data && data.fatal) {
-            if (data.type === window.Hls.ErrorTypes.NETWORK_ERROR) {
-              this.hlsPlayer.startLoad();
-            } else if (data.type === window.Hls.ErrorTypes.MEDIA_ERROR) {
-              this.hlsPlayer.recoverMediaError();
-            } else {
-              this.hlsPlayer.destroy();
-            }
-          }
-        });
-        return;
-      }
-
-      if (videoElement.canPlayType('application/vnd.apple.mpegurl')) {
-        console.log('[IPTV] Utilizando HLS nativo.');
-        videoElement.src = originalUrl;
-        videoElement.play().catch(error => console.warn('[IPTV] Autoplay bloqueado:', error));
-        return;
-      }
-
-      alert('O seu navegador não suporta a reprodução HLS.');
-      return;
-    }
-
-    /* --- REPRODUÇÃO MP4 OU NATIVA --- */
-    videoElement.src = originalUrl;
-    videoElement.play().catch(error => {
-      console.error('[IPTV] Erro ao reproduzir vídeo:', error);
-      alert('Não foi possível reproduzir este vídeo.');
-    });
-  }
-
-  stopStream(videoElement) {
-    if (this.hlsPlayer) {
-      try {
-        this.hlsPlayer.destroy();
-      } catch (error) {
-        console.warn('[IPTV] Erro ao destruir HLS:', error);
-      }
-      this.hlsPlayer = null;
-    }
-    if (videoElement) {
-      this.resetVideo(videoElement);
-    }
-  }
 }
 
-/* ============================================================
-   INSTÂNCIA GLOBAL E INICIALIZAÇÃO
-   ============================================================ */
+// 2. Carregar Categorias de Canais Ao Vivo
+async function loadCategories() {
+    const url = `${BASE_URL}?username=${encodeURIComponent(globalUsername)}&password=${encodeURIComponent(globalPassword)}&action=get_live_categories`;
+    console.log('[IPTV] Requisição: Categorias - live');
+    console.log('[IPTV] URL:', url);
 
-const iptv = new IPTVEngine();
+    try {
+        const response = await fetch(PROXY_URL + encodeURIComponent(url));
+        const categories = await response.json();
 
-document.addEventListener('DOMContentLoaded', () => {
-  console.log('[IPTV] Aplicação iniciada.');
+        categorySelect.innerHTML = '<option value="">Selecione uma categoria...</option>';
 
-  if (window.lucide) {
-    lucide.createIcons();
-  }
+        if (Array.isArray(categories)) {
+            categories.forEach(cat => {
+                const option = document.createElement('option');
+                option.value = cat.category_id;
+                option.textContent = cat.category_name;
+                categorySelect.appendChild(option);
+            });
+        }
+    } catch (error) {
+        console.error('[IPTV] Erro ao carregar categorias:', error);
+    }
+}
 
-  startClock();
-
-  const searchInput = document.getElementById('catalog-search-input');
-  if (searchInput) {
-    searchInput.addEventListener('input', event => {
-      const query = String(event.target.value || '').toLowerCase().trim();
-      iptv.filteredItems = iptv.currentItems.filter(item => {
-        const name = String(item.name || '').toLowerCase();
-        const title = String(item.title || '').toLowerCase();
-        return name.includes(query) || title.includes(query);
-      });
-      renderCatalogGrid(iptv.filteredItems);
-    });
-  }
+// Evento de Mudança de Categoria
+categorySelect.addEventListener('change', (e) => {
+    const categoryId = e.target.value;
+    if (categoryId) {
+        loadStreams(categoryId);
+    } else {
+        streamList.innerHTML = '';
+    }
 });
 
-/* ============================================================
-   FUNÇÕES AUXILIARES DE INTERFACE
-   ============================================================ */
+// 3. Carregar Lista de Canais/Streams
+async function loadStreams(categoryId) {
+    const url = `${BASE_URL}?username=${encodeURIComponent(globalUsername)}&password=${encodeURIComponent(globalPassword)}&action=get_live_streams&category_id=${encodeURIComponent(categoryId)}`;
+    console.log('[IPTV] Requisição: Streams - live');
+    console.log('[IPTV] URL:', url);
 
-function startClock() {
-  const clockEl = document.getElementById('clock');
-  if (!clockEl) return;
-  const updateClock = () => {
-    clockEl.innerText = new Date().toLocaleTimeString('pt-PT');
-  };
-  updateClock();
-  setInterval(updateClock, 1000);
+    try {
+        const response = await fetch(PROXY_URL + encodeURIComponent(url));
+        const streams = await response.json();
+
+        streamList.innerHTML = '';
+
+        if (Array.isArray(streams)) {
+            streams.forEach(stream => {
+                const li = document.createElement('li');
+                li.textContent = stream.name;
+                li.className = 'stream-item';
+                li.addEventListener('click', () => {
+                    playStream(stream.stream_id);
+                });
+                streamList.appendChild(li);
+            });
+        }
+    } catch (error) {
+        console.error('[IPTV] Erro ao carregar streams:', error);
+    }
 }
 
-function switchScreen(screenId) {
-  document.querySelectorAll('.screen').forEach(screen => screen.classList.remove('active'));
-  const target = document.getElementById(screenId);
-  if (target) target.classList.add('active');
-}
+// 4. Reproduzir a Stream Escolhida
+function playStream(streamId) {
+    const rawStreamUrl = `${STREAM_BASE_URL}/${globalUsername}/${globalPassword}/${streamId}.m3u8`;
+    console.log('[IPTV] URL original do stream:', rawStreamUrl);
 
-async function handleLogin(event) {
-  event.preventDefault();
-  const urlInput = document.getElementById('server-url');
-  const userInput = document.getElementById('username');
-  const passInput = document.getElementById('password');
+    // Constrói o URL com o Cloudflare Worker
+    const proxiedStreamUrl = PROXY_URL + encodeURIComponent(rawStreamUrl);
 
-  const btn = event.target.querySelector('button');
-  let originalText = btn ? btn.innerText : 'ENTRAR';
-
-  if (btn) {
-    btn.innerText = 'A LIGAR...';
-    btn.disabled = true;
-  }
-
-  const result = await iptv.login(
-    urlInput ? urlInput.value : '',
-    userInput ? userInput.value : '',
-    passInput ? passInput.value : ''
-  );
-
-  if (btn) {
-    btn.innerText = originalText;
-    btn.disabled = false;
-  }
-
-  if (result.success) {
-    switchScreen('dashboard-screen');
-  } else {
-    alert(result.message);
-  }
-}
-
-function logout() {
-  const video = document.getElementById('video-player');
-  iptv.stopStream(video);
-  switchScreen('login-screen');
-}
-
-async function openCatalog(type) {
-  iptv.currentType = type;
-  iptv.selectedItemIndex = -1;
-
-  const catalogTitle = document.getElementById('catalog-title');
-  const labels = { live: 'CANAIS AO VIVO', movies: 'FILMES (VOD)', series: 'SÉRIES' };
-  if (catalogTitle) catalogTitle.innerText = labels[type] || 'CATÁLOGO';
-
-  switchScreen('catalog-screen');
-
-  const categoriesList = document.getElementById('category-list');
-  if (categoriesList) categoriesList.innerHTML = '<li class="category-item">A carregar...</li>';
-
-  const grid = document.getElementById('catalog-grid');
-  if (grid) grid.innerHTML = '<p style="grid-column:1/-1;text-align:center;color:#888;">Selecione uma categoria...</p>';
-
-  const categories = await iptv.getCategories(type);
-  iptv.categories = categories;
-  renderCategorySidebar(categories);
-
-  if (categories && categories.length > 0) {
-    await selectCategory(categories[0].category_id);
-  }
-}
-
-function renderCategorySidebar(categories) {
-  const list = document.getElementById('category-list');
-  if (!list) return;
-
-  list.innerHTML = '';
-  if (!categories || categories.length === 0) {
-    list.innerHTML = '<li class="category-item">Nenhuma categoria encontrada</li>';
-    return;
-  }
-
-  categories.forEach(category => {
-    const li = document.createElement('li');
-    li.className = 'category-item';
-    li.dataset.id = category.category_id;
-
-    const span = document.createElement('span');
-    span.innerText = category.category_name || 'Sem categoria';
-
-    li.appendChild(span);
-    li.onclick = () => selectCategory(category.category_id);
-    list.appendChild(li);
-  });
-}
-
-async function selectCategory(categoryId) {
-  iptv.currentCategoryId = categoryId;
-
-  document.querySelectorAll('.category-item').forEach(element => {
-    element.classList.toggle('active', element.dataset.id == categoryId);
-  });
-
-  const grid = document.getElementById('catalog-grid');
-  if (grid) grid.innerHTML = '<p style="grid-column:1/-1;text-align:center;color:#888;">A carregar conteúdos...</p>';
-
-  const items = await iptv.getStreams(iptv.currentType, categoryId);
-  iptv.currentItems = items;
-  iptv.filteredItems = items;
-  renderCatalogGrid(items);
-}
-
-function renderCatalogGrid(items) {
-  const grid = document.getElementById('catalog-grid');
-  if (!grid) return;
-
-  grid.innerHTML = '';
-  if (!items || items.length === 0) {
-    grid.innerHTML = '<p style="grid-column:1/-1;text-align:center;color:#888;">Nenhum conteúdo nesta categoria.</p>';
-    return;
-  }
-
-  const svgPlaceholder = `
-    <svg xmlns="http://www.w3.org/2000/svg" width="150" height="225" viewBox="0 0 150 225">
-      <rect width="150" height="225" fill="#121a14"/>
-      <text x="75" y="112" dominant-baseline="middle" text-anchor="middle" fill="#888888" font-size="12" font-family="Arial, sans-serif">Sem Imagem</text>
-    </svg>`;
-  const placeholderImg = 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svgPlaceholder);
-
-  items.forEach((item, index) => {
-    const card = document.createElement('div');
-    card.className = 'media-card';
-
-    const name = item.name || item.title || 'Sem título';
-    let rawIcon = String(item.stream_icon || item.cover || '').trim();
-
-    const image = document.createElement('img');
-    image.className = 'media-poster';
-    image.alt = name;
-    image.loading = 'lazy';
-    image.src = rawIcon ? iptv.formatUrlWithProxy(rawIcon) : placeholderImg;
-
-    image.onerror = function() {
-      this.onerror = null;
-      this.src = placeholderImg;
-    };
-
-    const title = document.createElement('span');
-    title.title = name;
-    title.innerText = name;
-
-    card.appendChild(image);
-    card.appendChild(title);
-    card.onclick = () => onMediaCardClick(item, index);
-
-    grid.appendChild(card);
-  });
-}
-
-async function onMediaCardClick(item, index) {
-  iptv.selectedItemIndex = index;
-
-  if (iptv.currentType === 'series') {
-    switchScreen('player-screen');
-    await loadSeriesEpisodes(item);
-    return;
-  }
-
-  const streamId = item.stream_id;
-  if (streamId === undefined || streamId === null || streamId === '') {
-    alert('Este conteúdo não possui um stream_id válido.');
-    return;
-  }
-
-  const streamUrl = iptv.getStreamUrl(
-    streamId,
-    item.container_extension || null,
-    iptv.currentType,
-    item.direct_source || item.directSource || null
-  );
-
-  startPlayerScreen(item.name || item.title || 'A reproduzir', streamUrl);
-  renderSidebarPlaylist(iptv.filteredItems, index);
-}
-
-async function loadSeriesEpisodes(seriesItem) {
-  const titleEl = document.getElementById('playing-title');
-  if (titleEl) titleEl.innerText = seriesItem.name || 'Série';
-
-  const sidebarList = document.getElementById('sidebar-list');
-  if (!sidebarList) return;
-
-  sidebarList.innerHTML = '<li class="sidebar-item">A carregar episódios...</li>';
-
-  const data = await iptv.getSeriesInfo(seriesItem.series_id);
-  if (!data || !data.episodes) {
-    sidebarList.innerHTML = '<li class="sidebar-item">Nenhum episódio encontrado.</li>';
-    return;
-  }
-
-  sidebarList.innerHTML = '';
-  let firstEpisodeUrl = null;
-  let firstEpisodeTitle = '';
-
-  Object.keys(data.episodes).forEach(seasonNum => {
-    const header = document.createElement('li');
-    header.className = 'sidebar-item';
-    header.style.cssText = 'font-weight:bold; color:#00ff66; background:#0d140e;';
-    header.innerText = 'TEMPORADA ' + seasonNum;
-    sidebarList.appendChild(header);
-
-    const episodes = Array.isArray(data.episodes[seasonNum]) ? data.episodes[seasonNum] : [];
-
-    episodes.forEach(episode => {
-      const epLi = document.createElement('li');
-      epLi.className = 'sidebar-item';
-      epLi.innerText = 'E' + episode.episode_num + ' - ' + (episode.title || 'Episódio');
-
-      const streamUrl = iptv.getStreamUrl(episode.id, episode.container_extension || 'mp4', 'series');
-
-      if (!firstEpisodeUrl) {
-        firstEpisodeUrl = streamUrl;
-        firstEpisodeTitle = `${seriesItem.name || 'Série'} - T${seasonNum}:E${episode.episode_num}`;
-      }
-
-      epLi.onclick = () => {
-        document.querySelectorAll('.sidebar-item').forEach(el => el.classList.remove('active'));
-        epLi.classList.add('active');
-        if (titleEl) titleEl.innerText = `${seriesItem.name || 'Série'} - T${seasonNum}:E${episode.episode_num}`;
-        iptv.playStream(document.getElementById('video-player'), streamUrl);
-      };
-
-      sidebarList.appendChild(epLi);
+    console.log('[IPTV] INICIANDO STREAM COM WORKER PROXY:');
+    console.log({
+        tipo: 'live',
+        formato: 'hls',
+        urlOriginal: rawStreamUrl,
+        urlFinal: proxiedStreamUrl
     });
-  });
 
-  if (firstEpisodeUrl) {
-    if (titleEl) titleEl.innerText = firstEpisodeTitle;
-    iptv.playStream(document.getElementById('video-player'), firstEpisodeUrl);
-  }
-}
+    // Destrói instância HLS anterior, se existir
+    if (hlsInstance) {
+        hlsInstance.destroy();
+        hlsInstance = null;
+    }
 
-function startPlayerScreen(title, streamUrl) {
-  switchScreen('player-screen');
-  const titleEl = document.getElementById('playing-title');
-  if (titleEl) titleEl.innerText = title || 'A reproduzir';
+    if (Hls.isSupported()) {
+        console.log('[IPTV] Utilizando HLS.js.');
+        
+        hlsInstance = new Hls({
+            xhrSetup: function (xhr, url) {
+                // Redireciona todos os fragmentos e playlists (.ts / .m3u8) através do Worker
+                if (!url.startsWith(PROXY_URL)) {
+                    xhr.open('GET', PROXY_URL + encodeURIComponent(url), true);
+                }
+            }
+        });
 
-  const video = document.getElementById('video-player');
-  iptv.playStream(video, streamUrl);
-}
+        hlsInstance.loadSource(proxiedStreamUrl);
+        hlsInstance.attachMedia(videoPlayer);
 
-function renderSidebarPlaylist(items, currentIndex) {
-  const sidebarList = document.getElementById('sidebar-list');
-  if (!sidebarList) return;
+        hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => {
+            videoPlayer.play().catch(e => console.warn('[IPTV] Reprodução automática bloqueada:', e));
+        });
 
-  sidebarList.innerHTML = '';
-  if (!items || items.length === 0) {
-    sidebarList.innerHTML = '<li class="sidebar-item">Nenhum conteúdo disponível.</li>';
-    return;
-  }
+        hlsInstance.on(Hls.Events.ERROR, (event, data) => {
+            console.error('[IPTV] Erro HLS:', data);
+        });
 
-  items.forEach((item, index) => {
-    const li = document.createElement('li');
-    li.className = 'sidebar-item';
-    if (index === currentIndex) li.classList.add('active');
-
-    const name = item.name || item.title || 'Sem título';
-    li.innerText = name;
-
-    li.onclick = () => {
-      iptv.selectedItemIndex = index;
-      renderSidebarPlaylist(items, index);
-
-      const streamUrl = iptv.getStreamUrl(
-        item.stream_id,
-        item.container_extension || null,
-        iptv.currentType,
-        item.direct_source || item.directSource || null
-      );
-
-      startPlayerScreen(name, streamUrl);
-    };
-
-    sidebarList.appendChild(li);
-  });
-}
-
-/* ============================================================
-   CONTROLES DO PLAYER
-   ============================================================ */
-
-function playMediaControl() {
-  const video = document.getElementById('video-player');
-  if (video) video.play().catch(error => console.warn('[IPTV] Não foi possível iniciar:', error));
-}
-
-function pauseMediaControl() {
-  const video = document.getElementById('video-player');
-  if (video) video.pause();
-}
-
-function stopMediaControl() {
-  const video = document.getElementById('video-player');
-  if (video) iptv.stopStream(video);
-}
-
-function nextMedia() {
-  if (iptv.selectedItemIndex >= 0 && iptv.selectedItemIndex < iptv.filteredItems.length - 1) {
-    const nextIndex = iptv.selectedItemIndex + 1;
-    onMediaCardClick(iptv.filteredItems[nextIndex], nextIndex);
-  }
-}
-
-function prevMedia() {
-  if (iptv.selectedItemIndex > 0) {
-    const previousIndex = iptv.selectedItemIndex - 1;
-    onMediaCardClick(iptv.filteredItems[previousIndex], previousIndex);
-  }
+    } else if (videoPlayer.canPlayType('application/vnd.apple.mpegurl')) {
+        // Suporte nativo para Safari/iOS
+        videoPlayer.src = proxiedStreamUrl;
+        videoPlayer.play();
+    } else {
+        alert('O seu navegador não suporta a reprodução de vídeo HLS.');
+    }
 }
