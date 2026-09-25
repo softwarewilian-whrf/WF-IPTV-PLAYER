@@ -1,4 +1,4 @@
-// Configuração da API e Proxy
+// Configuração da API e Proxy no Cloudflare Worker
 const BASE_URL = 'https://nivok.xyz/player_api.php';
 const STREAM_BASE_URL = 'https://nivok.xyz/live';
 const PROXY_URL = 'https://rapid-voice-4ddf.softwarewilian.workers.dev/?url=';
@@ -248,7 +248,7 @@ async function loadStreams(categoryId) {
     }
 }
 
-// Renderizar Grade de Capas (Posters) na Área Central
+// Renderizar Grade de Capas na Área Central
 function renderStreamGrid(streams) {
     const contentGrid = document.getElementById('content-grid');
     if (!contentGrid) return;
@@ -387,7 +387,7 @@ function closeSeriesModal() {
     if (modal) modal.classList.remove('active');
 }
 
-// 5. Controlo de Reprodução e Modal do Leitor
+// 5. Controlo de Reprodução e Leitor
 function playCurrentIndex() {
     if (currentIndex < 0 || currentIndex >= currentPlaylist.length) return;
 
@@ -398,7 +398,7 @@ function playCurrentIndex() {
     let rawStreamUrl = '';
 
     if (currentMode === 'live') {
-        // Padrão Xtream Codes para canais ao vivo (reproduz TS/MPEG-TS ou m3u8)
+        // Padrão de transmissão ao vivo (TS/MPEG-TS)
         rawStreamUrl = `${STREAM_BASE_URL}/${globalUsername}/${globalPassword}/${currentItem.id}.ts`;
     } else if (currentMode === 'movies') {
         rawStreamUrl = `https://nivok.xyz/movie/${globalUsername}/${globalPassword}/${currentItem.id}.${currentItem.extension}`;
@@ -435,11 +435,10 @@ function playMediaUrl(rawStreamUrl) {
 
     const proxiedStreamUrl = PROXY_URL + encodeURIComponent(rawStreamUrl);
 
-    // Se for um fluxo HLS (.m3u8)
+    // Se for transmissão HLS (.m3u8)
     if (rawStreamUrl.includes('.m3u8') && Hls.isSupported()) {
         hlsInstance = new Hls({
             xhrSetup: function (xhr, url) {
-                // Garante que todas as requisições de fragmentos passem pelo proxy
                 if (!url.startsWith(PROXY_URL)) {
                     xhr.open('GET', PROXY_URL + encodeURIComponent(url), true);
                 }
@@ -450,19 +449,18 @@ function playMediaUrl(rawStreamUrl) {
         hlsInstance.attachMedia(videoPlayer);
 
         hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => {
-            videoPlayer.play().catch(e => console.warn('[IPTV] Reprodução bloqueada pelo navegador:', e));
+            videoPlayer.play().catch(e => console.warn('[IPTV] Autoplay bloqueado pelo navegador:', e));
         });
 
         hlsInstance.on(Hls.Events.ERROR, (event, data) => {
             if (data.fatal) {
-                console.error('[IPTV] Erro fatal do HLS:', data);
-                // Tentativa de fallback direto em caso de falha no HLS
+                console.error('[IPTV] Erro do HLS:', data);
                 videoPlayer.src = proxiedStreamUrl;
                 videoPlayer.play().catch(() => {});
             }
         });
     } else {
-        // Transmissões TS (ao vivo) ou MP4/MKV (filmes/séries)
+        // Transmissões de canais brutos (.ts) ou filmes/séries (.mp4 / .mkv)
         videoPlayer.src = proxiedStreamUrl;
         videoPlayer.play().catch(e => console.warn('[IPTV] Reprodução direta bloqueada:', e));
     }
