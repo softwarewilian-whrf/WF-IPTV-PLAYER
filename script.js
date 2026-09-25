@@ -1,6 +1,6 @@
 /**
  * ============================================================
- * WF IPTV PLAYER - SCRIPT PRINCIPAL CORRIGIDO
+ * WF IPTV PLAYER - SCRIPT PRINCIPAL CORRIGIDO (SUPORTE HTTPS)
  * ============================================================
  */
 
@@ -30,6 +30,12 @@ class IPTVEngine {
     const cleanUrl = String(url).trim();
     if (!cleanUrl) return '';
 
+    // Se o servidor IPTV já é HTTPS, envia a requisição direta (sem Proxy)
+    if (cleanUrl.toLowerCase().startsWith('https://')) {
+      return cleanUrl;
+    }
+
+    // Apenas se o site estiver em HTTPS e o link for HTTP (Mixed Content), utiliza o Proxy
     if (
       window.location.protocol === 'https:' &&
       cleanUrl.toLowerCase().startsWith('http://')
@@ -77,7 +83,7 @@ class IPTVEngine {
     if (!this.serverUrl || !this.username || !this.password) {
       return {
         success: false,
-        message: 'Preencha servidor, usuário e senha.'
+        message: 'Preencha servidor, utilizador e palavra-passe.'
       };
     }
 
@@ -109,7 +115,7 @@ class IPTVEngine {
       console.error('[IPTV] Servidor recusou a autenticação.');
       return {
         success: false,
-        message: 'Usuário ou senha inválidos.'
+        message: 'Utilizador ou palavra-passe inválidos.'
       };
 
     } catch (error) {
@@ -217,7 +223,7 @@ class IPTVEngine {
   }
 
   /* ==========================================================
-     URL DO STREAM (CORRIGIDO PARA CANAIS AO VIVO)
+     URL DO STREAM (CANAIS AO VIVO EM HLS)
      ========================================================== */
 
   getStreamUrl(streamId, containerExtension = null, type = 'live', directSource = null) {
@@ -235,7 +241,7 @@ class IPTVEngine {
     const id = encodeURIComponent(streamId);
     let rawUrl = '';
 
-    // CANAIS AO VIVO: Força HLS (.m3u8) para rodar nativamente via HLS.js
+    // CANAIS AO VIVO: Força o formato .m3u8 para compatibilidade HLS
     if (type === 'live') {
       rawUrl = `${this.serverUrl}/live/${user}/${pass}/${id}.m3u8`;
     } 
@@ -299,7 +305,7 @@ class IPTVEngine {
       return;
     }
 
-    // Destrói instância HLS anterior
+    // Destrói a instância HLS anterior para evitar sobreposição
     if (this.hlsPlayer) {
       try {
         this.hlsPlayer.destroy();
@@ -334,13 +340,7 @@ class IPTVEngine {
           lowLatencyMode: true,
           backBufferLength: 90,
           liveSyncDurationCount: 3,
-          maxBufferLength: 30,
-          xhrSetup: (xhr, url) => {
-            if (window.location.protocol === 'https:' && String(url).toLowerCase().startsWith('http://')) {
-              const proxiedUrl = 'https://corsproxy.io/?url=' + encodeURIComponent(url);
-              xhr.open('GET', proxiedUrl, true);
-            }
-          }
+          maxBufferLength: 30
         });
 
         this.hlsPlayer.loadSource(finalStreamUrl);
@@ -373,7 +373,7 @@ class IPTVEngine {
         return;
       }
 
-      alert('Seu navegador não suporta reprodução HLS.');
+      alert('O seu navegador não suporta a reprodução HLS.');
       return;
     }
 
@@ -437,7 +437,7 @@ function startClock() {
   const clockEl = document.getElementById('clock');
   if (!clockEl) return;
   const updateClock = () => {
-    clockEl.innerText = new Date().toLocaleTimeString('pt-BR');
+    clockEl.innerText = new Date().toLocaleTimeString('pt-PT');
   };
   updateClock();
   setInterval(updateClock, 1000);
@@ -621,7 +621,7 @@ async function onMediaCardClick(item, index) {
     item.direct_source || item.directSource || null
   );
 
-  startPlayerScreen(item.name || item.title || 'Reproduzindo', streamUrl);
+  startPlayerScreen(item.name || item.title || 'A reproduzir', streamUrl);
   renderSidebarPlaylist(iptv.filteredItems, index);
 }
 
@@ -685,7 +685,7 @@ async function loadSeriesEpisodes(seriesItem) {
 function startPlayerScreen(title, streamUrl) {
   switchScreen('player-screen');
   const titleEl = document.getElementById('playing-title');
-  if (titleEl) titleEl.innerText = title || 'Reproduzindo';
+  if (titleEl) titleEl.innerText = title || 'A reproduzir';
 
   const video = document.getElementById('video-player');
   iptv.playStream(video, streamUrl);
