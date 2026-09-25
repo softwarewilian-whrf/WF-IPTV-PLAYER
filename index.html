@@ -1,179 +1,86 @@
 <!DOCTYPE html>
-<html lang="pt-PT">
+<html lang="pt">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>WF IPTV Player</title>
-
-  <!-- Google Fonts & Lucide Icons -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
-  <script src="https://unpkg.com/lucide@latest"></script>
-
-  <!-- HLS.js para suporte a transmissões HLS/m3u8 -->
-  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
-
-  <!-- Estilos CSS -->
-  <link rel="stylesheet" href="style.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WF IPTV PLAYER</title>
+    <!-- CSS da Aplicação -->
+    <link rel="stylesheet" href="style.css">
+    <!-- Biblioteca HLS.js para reprodução de streams -->
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <!-- Ícones Lucide -->
+    <script src="https://unpkg.com/lucide@latest"></script>
 </head>
 <body>
 
-  <!-- ==========================================
-       1. TELA DE LOGIN
-       ========================================== -->
-  <section id="login-screen" class="screen active">
-    <div class="login-card">
-      <div class="logo-area">
-        <!-- Logótipo Principal da Aplicação -->
-        <img src="logo.png" alt="WF IPTV Player Logo" class="custom-logo" onerror="this.style.display='none'; document.getElementById('fallback-logo-icon').style.display='block';">
-        <i data-lucide="tv" id="fallback-logo-icon" class="logo-icon" style="display: none;"></i>
-        <h1>WF IPTV PLAYER</h1>
-        <p>Aceda aos seus canais, filmes e séries</p>
-      </div>
+    <!-- ECRÃ DE LOGIN -->
+    <div id="login-section" class="screen active">
+        <div class="login-card">
+            <div class="logo-container">
+                <div class="logo-icon">
+                    <i data-lucide="tv"></i>
+                </div>
+                <h1>WF IPTV PLAYER</h1>
+                <p>Aceda aos seus canais, filmes e séries</p>
+            </div>
 
-      <form id="login-form" onsubmit="handleLogin(event)">
-        <div class="form-group">
-          <label for="server-url">Servidor / URL</label>
-          <input type="text" id="server-url" placeholder="http://exemplo.com:8080" required>
+            <form id="login-form">
+                <div class="input-group">
+                    <label for="server-url">SERVIDOR / URL</label>
+                    <input type="text" id="server-url" value="https://nivok.xyz" placeholder="https://exemplo.com:8080" required>
+                </div>
+
+                <div class="input-group">
+                    <label for="username">UTILIZADOR</label>
+                    <input type="text" id="username" placeholder="O seu utilizador" required>
+                </div>
+
+                <div class="input-group">
+                    <label for="password">PALAVRA-PASSE</label>
+                    <input type="password" id="password" placeholder="A sua palavra-passe" required>
+                </div>
+
+                <button type="submit" class="btn-primary">ENTRAR</button>
+            </form>
         </div>
-
-        <div class="form-group">
-          <label for="username">Utilizador</label>
-          <input type="text" id="username" placeholder="O seu utilizador" required>
-        </div>
-
-        <div class="form-group">
-          <label for="password">Palavra-passe</label>
-          <input type="password" id="password" placeholder="A sua palavra-passe" required>
-        </div>
-
-        <button type="submit" class="btn-primary">ENTRAR</button>
-      </form>
     </div>
-  </section>
 
-  <!-- ==========================================
-       2. TELA DASHBOARD (PAINEL PRINCIPAL)
-       ========================================== -->
-  <section id="dashboard-screen" class="screen">
-    <header class="app-header">
-      <div class="header-left">
-        <!-- Logótipo Compacto da Barra Superior -->
-        <img src="logo.png" alt="Logo" class="header-custom-logo" onerror="this.style.display='none';">
-        <span class="brand-title">IPTV PLAYER</span>
-      </div>
-      <div class="header-right">
-        <span id="clock">00:00:00</span>
-        <button class="btn-icon" onclick="logout()" title="Sair">
-          <i data-lucide="log-out"></i>
-        </button>
-      </div>
-    </header>
+    <!-- ECRÃ PRINCIPAL / APLICAÇÃO -->
+    <div id="app-section" class="screen" style="display: none;">
+        <header class="app-header">
+            <div class="header-left">
+                <h2>WF IPTV PLAYER</h2>
+            </div>
+            <div class="header-right">
+                <span id="clock">00:00:00</span>
+            </div>
+        </header>
 
-    <main class="dashboard-content">
-      <div class="dashboard-grid">
-        
-        <div class="dash-card" onclick="openCatalog('live')">
-          <i data-lucide="tv-2" class="dash-icon"></i>
-          <h2>CANAIS AO VIVO</h2>
-          <p>Transmissões em direto</p>
-        </div>
+        <main class="app-content">
+            <!-- Seleção de Categorias -->
+            <div class="controls-bar">
+                <label for="category-select">Categoria:</label>
+                <select id="category-select">
+                    <option value="">Selecione uma categoria...</option>
+                </select>
+            </div>
 
-        <div class="dash-card" onclick="openCatalog('movies')">
-          <i data-lucide="film" class="dash-icon"></i>
-          <h2>FILMES (VOD)</h2>
-          <p>Catálogo de filmes</p>
-        </div>
+            <div class="main-layout">
+                <!-- Lista de Streams / Canais -->
+                <div class="sidebar">
+                    <h3>Canais</h3>
+                    <ul id="stream-list" class="stream-list"></ul>
+                </div>
 
-        <div class="dash-card" onclick="openCatalog('series')">
-          <i data-lucide="clapperboard" class="dash-icon"></i>
-          <h2>SÉRIES</h2>
-          <p>Episódios e temporadas</p>
-        </div>
-
-      </div>
-    </main>
-  </section>
-
-  <!-- ==========================================
-       3. TELA DE CATÁLOGO / CONTEÚDOS
-       ========================================== -->
-  <section id="catalog-screen" class="screen">
-    <header class="app-header">
-      <div class="header-left">
-        <button class="btn-icon" onclick="switchScreen('dashboard-screen')" title="Voltar">
-          <i data-lucide="arrow-left"></i>
-        </button>
-        <h2 id="catalog-title">CATÁLOGO</h2>
-      </div>
-      <div class="header-search">
-        <input type="text" id="catalog-search-input" placeholder="Pesquisar...">
-      </div>
-    </header>
-
-    <div class="catalog-container">
-      <aside class="sidebar-categories">
-        <h3>CATEGORIAS</h3>
-        <ul id="category-list">
-          <!-- Categorias carregadas via JS -->
-        </ul>
-      </aside>
-
-      <section class="catalog-grid-wrapper">
-        <div id="catalog-grid" class="catalog-grid">
-          <!-- Cards de mídia carregados via JS -->
-        </div>
-      </section>
+                <!-- Reprodutor de Vídeo -->
+                <div class="player-container">
+                    <video id="video-player" controls autoplay playsinline></video>
+                </div>
+            </div>
+        </main>
     </div>
-  </section>
 
-  <!-- ==========================================
-       4. TELA DO PLAYER DE VÍDEO
-       ========================================== -->
-  <section id="player-screen" class="screen">
-    <header class="app-header player-header">
-      <div class="header-left">
-        <button class="btn-icon" onclick="switchScreen('catalog-screen')" title="Voltar ao Catálogo">
-          <i data-lucide="arrow-left"></i>
-        </button>
-        <span id="playing-title">Reproduzindo</span>
-      </div>
-    </header>
-
-    <div class="player-container">
-      <div class="video-wrapper">
-        <video id="video-player" controls autoplay playsinline></video>
-        
-        <div class="player-custom-controls">
-          <button class="btn-icon" onclick="prevMedia()" title="Anterior">
-            <i data-lucide="skip-back"></i>
-          </button>
-          <button class="btn-icon" onclick="playMediaControl()" title="Reproduzir">
-            <i data-lucide="play"></i>
-          </button>
-          <button class="btn-icon" onclick="pauseMediaControl()" title="Pausar">
-            <i data-lucide="pause"></i>
-          </button>
-          <button class="btn-icon" onclick="stopMediaControl()" title="Parar">
-            <i data-lucide="square"></i>
-          </button>
-          <button class="btn-icon" onclick="nextMedia()" title="Próximo">
-            <i data-lucide="skip-forward"></i>
-          </button>
-        </div>
-      </div>
-
-      <aside class="player-sidebar">
-        <h3>LISTA DE REPRODUÇÃO</h3>
-        <ul id="sidebar-list">
-          <!-- Lista de canais ou episódios -->
-        </ul>
-      </aside>
-    </div>
-  </section>
-
-  <!-- Script Principal Corrigido -->
-  <script src="script.js"></script>
+    <!-- JavaScript da Aplicação -->
+    <script src="script.js"></script>
 </body>
 </html>
