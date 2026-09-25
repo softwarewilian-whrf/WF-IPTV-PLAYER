@@ -1,112 +1,169 @@
 <!DOCTYPE html>
-<html lang="pt">
+<html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WF IPTV PLAYER</title>
-    <link rel="stylesheet" href="style.css">
-    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
-    <script src="https://unpkg.com/lucide@latest"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WF IPTV Player - Xbox Dark Edition</title>
+
+  <!-- HLS.js para reprodução de canais ao vivo e VOD -->
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-    <!-- ECRÃ DE LOGIN -->
-    <div id="login-screen" class="screen active">
-        <div class="login-card">
-            <div class="logo-container">
-                <div class="logo-icon">
-                    <i data-lucide="tv"></i>
-                </div>
-                <h1>WF IPTV PLAYER</h1>
-                <p>Aceda aos seus canais, filmes e séries</p>
-            </div>
+  <!-- TELA 1: LOGIN -->
+  <div id="login-screen" class="screen active">
+    <div class="login-container">
+      <div class="app-brand-logo">
+        <img src="logo.png" alt="WF IPTV Player" class="custom-logo login-logo">
+      </div>
 
-            <form id="login-form">
-                <div class="input-group">
-                    <label for="server-url">SERVIDOR / URL</label>
-                    <input type="text" id="server-url" value="https://nivok.xyz" placeholder="https://exemplo.com" required>
-                </div>
+      <div class="server-type-selector">
+        <select id="server-type">
+          <option value="xtream">XTREAM CODES API</option>
+          <option value="m3u">LISTA M3U / M3U8</option>
+          <option value="fastocloud">FASTOCLOUD</option>
+          <option value="ezserver">EZSERVER</option>
+        </select>
+      </div>
 
-                <div class="input-group">
-                    <label for="username">UTILIZADOR</label>
-                    <input type="text" id="username" placeholder="O seu utilizador" required>
-                </div>
-
-                <div class="input-group">
-                    <label for="password">PALAVRA-PASSE</label>
-                    <input type="password" id="password" placeholder="A sua palavra-passe" required>
-                </div>
-
-                <button type="submit" class="btn-primary">ENTRAR</button>
-            </form>
+      <form id="auth-form">
+        <div class="input-group cred-field">
+          <span class="input-icon"><i data-lucide="user"></i></span>
+          <input type="text" id="username" placeholder="Utilizador" required>
         </div>
-    </div>
 
-    <!-- ECRÃ DO DASHBOARD (MENU PRINCIPAL) -->
-    <div id="dashboard-screen" class="screen">
-        <header class="app-header">
-            <h2>WF IPTV PLAYER</h2>
-            <span id="clock">00:00:00</span>
-        </header>
-
-        <main class="dashboard-grid">
-            <div class="dash-card" onclick="openCatalog('live')">
-                <i data-lucide="tv"></i>
-                <h3>Canais ao Vivo</h3>
-            </div>
-            <div class="dash-card" onclick="openCatalog('movies')">
-                <i data-lucide="film"></i>
-                <h3>Filmes</h3>
-            </div>
-            <div class="dash-card" onclick="openCatalog('series')">
-                <i data-lucide="clapperboard"></i>
-                <h3>Séries</h3>
-            </div>
-        </main>
-    </div>
-
-    <!-- ECRÃ DE CATÁLOGO (CANAIS, FILMES E SÉRIES) -->
-    <div id="catalog-screen" class="screen">
-        <header class="app-header">
-            <button class="btn-back" onclick="switchScreen('dashboard-screen')">
-                <i data-lucide="arrow-left"></i> Voltar
-            </button>
-            <h2 id="catalog-title">CATÁLOGO</h2>
-            <input type="text" id="catalog-search-input" placeholder="Pesquisar...">
-        </header>
-
-        <div class="catalog-layout">
-            <aside class="sidebar">
-                <h3>Categorias</h3>
-                <ul id="category-list" class="category-list"></ul>
-            </aside>
-
-            <main class="content-area">
-                <div id="catalog-grid" class="catalog-grid"></div>
-            </main>
+        <div class="input-group cred-field">
+          <span class="input-icon"><i data-lucide="lock"></i></span>
+          <input type="password" id="password" placeholder="Palavra-passe" required>
         </div>
+
+        <button type="submit" class="btn-signin">Entrar</button>
+      </form>
     </div>
+  </div>
 
-    <!-- ECRÃ DO PLAYER DE VÍDEO -->
-    <div id="player-screen" class="screen">
-        <header class="app-header">
-            <button class="btn-back" onclick="switchScreen('catalog-screen')">
-                <i data-lucide="arrow-left"></i> Voltar
-            </button>
-            <h2 id="playing-title">A reproduzir...</h2>
-        </header>
+  <!-- TELA 2: DASHBOARD XCIPTV -->
+  <div id="dashboard-screen" class="screen">
+    <header class="dash-header">
+      <div class="header-left">
+        <img src="logo.png" alt="WF IPTV Player" class="header-custom-logo">
+        <span class="status-badge"><i data-lucide="wifi"></i> <span id="conn-type">XTREAM</span></span>
+      </div>
+      
+      <div class="header-right">
+        <button id="btn-header-search" title="Buscar"><i data-lucide="search"></i></button>
+        <button id="btn-header-bell" title="Notificações"><i data-lucide="bell"></i></button>
+        <button id="btn-header-multi" title="Multitela"><i data-lucide="layout-grid"></i></button>
+        <button id="btn-header-mail" title="Mensagens"><i data-lucide="mail"></i></button>
+        <button id="btn-header-drive" title="Grave/Listas"><i data-lucide="hard-drive"></i></button>
+      </div>
+    </header>
 
-        <div class="player-layout">
-            <div class="video-container">
-                <video id="video-player" controls autoplay playsinline></video>
-            </div>
-            <aside class="player-sidebar">
-                <h3>Lista / Episódios</h3>
-                <ul id="sidebar-list" class="sidebar-list"></ul>
-            </aside>
+    <main class="main-circles-nav">
+      <div class="nav-circle live" onclick="loadCategories('live')">
+        <div class="circle-icon"><i data-lucide="tv"></i></div>
+        <span>LIVE TV</span>
+      </div>
+
+      <div class="nav-circle epg" onclick="loadCategories('live')">
+        <div class="circle-icon"><i data-lucide="list-checks"></i></div>
+        <span>EPG</span>
+      </div>
+
+      <div class="nav-circle vod" onclick="loadCategories('movies')">
+        <div class="circle-icon"><i data-lucide="film"></i></div>
+        <span>VOD</span>
+      </div>
+
+      <div class="nav-circle series" onclick="loadCategories('series')">
+        <div class="circle-icon"><i data-lucide="clapperboard"></i></div>
+        <span>SERIES</span>
+      </div>
+    </main>
+
+    <footer class="dash-footer">
+      <div class="footer-left">
+        <button id="btn-foot-account" class="foot-btn"><i data-lucide="user"></i><span>CONTA</span></button>
+        <button id="btn-foot-multi" class="foot-btn"><i data-lucide="grid"></i><span>MULTI</span></button>
+        <button id="btn-foot-catchup" class="foot-btn"><i data-lucide="history"></i><span>CATCH UP</span></button>
+      </div>
+
+      <div class="footer-right">
+        <button id="btn-foot-favorites" class="foot-btn"><i data-lucide="star"></i><span>FAVORITOS</span></button>
+        <button id="btn-foot-radio" class="foot-btn"><i data-lucide="radio"></i><span>RÁDIO</span></button>
+        <button id="btn-foot-config" class="foot-btn"><i data-lucide="settings"></i><span>CONFIG</span></button>
+      </div>
+    </footer>
+  </div>
+
+  <!-- TELA 3: NAVEGAÇÃO DE CONTEÚDO (CAPAS NO CENTRO + BARRA LATERAL) -->
+  <div id="player-screen" class="screen">
+    <header class="player-header">
+      <div class="header-left">
+        <button class="back-btn" onclick="showDashboard()"><i data-lucide="arrow-left"></i> VOLTAR</button>
+        <img src="logo.png" alt="WF IPTV Player" class="header-custom-logo">
+      </div>
+      <span id="section-title">LIVE TV</span>
+      <span id="clock">00:00:00</span>
+    </header>
+
+    <div class="player-body">
+      <!-- PAINEL LATERAL ESQUERDO: Seleção de Categorias e Pesquisa -->
+      <aside class="sidebar">
+        <div class="category-selector-wrapper">
+          <select id="category-select" class="styled-select">
+            <option value="">A carregar categorias...</option>
+          </select>
         </div>
-    </div>
+        <div class="search-box">
+          <i data-lucide="search"></i>
+          <input type="text" id="search-input" placeholder="Pesquisar...">
+        </div>
+      </aside>
 
-    <script src="script.js"></script>
+      <!-- ÁREA PRINCIPAL CENTRAL: Grade de Capas / Conteúdos -->
+      <main class="main-content-area">
+        <div id="content-grid" class="content-grid"></div>
+      </main>
+    </div>
+  </div>
+
+  <!-- MODAL DE TEMPORADAS E EPISÓDIOS DA SÉRIE -->
+  <div id="series-modal" class="modal-overlay">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 id="modal-series-title">Nome da Série</h2>
+        <button class="close-modal" onclick="closeSeriesModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="season-selector-wrapper">
+          <label for="season-select">Temporada:</label>
+          <select id="season-select" class="styled-select"></select>
+        </div>
+        <div id="episodes-list" class="episodes-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL DO REPRODUTOR DE VÍDEO -->
+  <div id="player-modal" class="modal-overlay">
+    <div class="modal-content video-modal-content">
+      <div class="modal-header">
+        <h2 id="current-title">A reproduzir...</h2>
+        <button class="close-modal" onclick="closePlayerModal()">&times;</button>
+      </div>
+      <div class="modal-body player-modal-body">
+        <div class="video-wrapper">
+          <video id="video-player" controls autoplay></video>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
 </body>
 </html>
