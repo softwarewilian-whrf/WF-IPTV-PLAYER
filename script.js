@@ -1,6 +1,6 @@
 /**
  * ============================================================
- * WF IPTV PLAYER - SCRIPT PRINCIPAL CORRIGIDO (SUPORTE HTTPS)
+ * WF IPTV PLAYER - SCRIPT PRINCIPAL CORRIGIDO (SUPORTE HTTPS / CORS)
  * ============================================================
  */
 
@@ -30,12 +30,7 @@ class IPTVEngine {
     const cleanUrl = String(url).trim();
     if (!cleanUrl) return '';
 
-    // Se o servidor IPTV já é HTTPS, envia a requisição direta (sem Proxy)
-    if (cleanUrl.toLowerCase().startsWith('https://')) {
-      return cleanUrl;
-    }
-
-    // Apenas se o site estiver em HTTPS e o link for HTTP (Mixed Content), utiliza o Proxy
+    // Se a página atual está sob HTTPS e o recurso é HTTP, redireciona pelo proxy
     if (
       window.location.protocol === 'https:' &&
       cleanUrl.toLowerCase().startsWith('http://')
@@ -340,7 +335,15 @@ class IPTVEngine {
           lowLatencyMode: true,
           backBufferLength: 90,
           liveSyncDurationCount: 3,
-          maxBufferLength: 30
+          maxBufferLength: 30,
+          // Intercepta todos os sub-pedidos do HLS (listas e partes .ts)
+          xhrSetup: (xhr, url) => {
+            if (window.location.protocol === 'https:' && url.startsWith('http://')) {
+              // Se o segmento interno for gerado em http://, redireciona pelo Proxy HTTPS
+              const proxiedUrl = 'https://corsproxy.io/?url=' + encodeURIComponent(url);
+              xhr.open('GET', proxiedUrl, true);
+            }
+          }
         });
 
         this.hlsPlayer.loadSource(finalStreamUrl);
