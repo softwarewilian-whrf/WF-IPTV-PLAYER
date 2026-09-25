@@ -4,17 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>WF IPTV PLAYER</title>
-    <!-- CSS da Aplicação -->
     <link rel="stylesheet" href="style.css">
-    <!-- Biblioteca HLS.js para reprodução de streams -->
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
-    <!-- Ícones Lucide -->
     <script src="https://unpkg.com/lucide@latest"></script>
 </head>
 <body>
 
     <!-- ECRÃ DE LOGIN -->
-    <div id="login-section" class="screen active">
+    <div id="login-screen" class="screen active">
         <div class="login-card">
             <div class="logo-container">
                 <div class="logo-icon">
@@ -27,7 +24,7 @@
             <form id="login-form">
                 <div class="input-group">
                     <label for="server-url">SERVIDOR / URL</label>
-                    <input type="text" id="server-url" value="https://nivok.xyz" placeholder="https://exemplo.com:8080" required>
+                    <input type="text" id="server-url" value="https://nivok.xyz" placeholder="https://exemplo.com" required>
                 </div>
 
                 <div class="input-group">
@@ -45,42 +42,71 @@
         </div>
     </div>
 
-    <!-- ECRÃ PRINCIPAL / APLICAÇÃO -->
-    <div id="app-section" class="screen" style="display: none;">
+    <!-- ECRÃ DO DASHBOARD (MENU PRINCIPAL) -->
+    <div id="dashboard-screen" class="screen">
         <header class="app-header">
-            <div class="header-left">
-                <h2>WF IPTV PLAYER</h2>
-            </div>
-            <div class="header-right">
-                <span id="clock">00:00:00</span>
-            </div>
+            <h2>WF IPTV PLAYER</h2>
+            <span id="clock">00:00:00</span>
         </header>
 
-        <main class="app-content">
-            <!-- Seleção de Categorias -->
-            <div class="controls-bar">
-                <label for="category-select">Categoria:</label>
-                <select id="category-select">
-                    <option value="">Selecione uma categoria...</option>
-                </select>
+        <main class="dashboard-grid">
+            <div class="dash-card" onclick="openCatalog('live')">
+                <i data-lucide="tv"></i>
+                <h3>Canais ao Vivo</h3>
             </div>
-
-            <div class="main-layout">
-                <!-- Lista de Streams / Canais -->
-                <div class="sidebar">
-                    <h3>Canais</h3>
-                    <ul id="stream-list" class="stream-list"></ul>
-                </div>
-
-                <!-- Reprodutor de Vídeo -->
-                <div class="player-container">
-                    <video id="video-player" controls autoplay playsinline></video>
-                </div>
+            <div class="dash-card" onclick="openCatalog('movies')">
+                <i data-lucide="film"></i>
+                <h3>Filmes</h3>
+            </div>
+            <div class="dash-card" onclick="openCatalog('series')">
+                <i data-lucide="clapperboard"></i>
+                <h3>Séries</h3>
             </div>
         </main>
     </div>
 
-    <!-- JavaScript da Aplicação -->
+    <!-- ECRÃ DE CATÁLOGO (CANAIS, FILMES E SÉRIES) -->
+    <div id="catalog-screen" class="screen">
+        <header class="app-header">
+            <button class="btn-back" onclick="switchScreen('dashboard-screen')">
+                <i data-lucide="arrow-left"></i> Voltar
+            </button>
+            <h2 id="catalog-title">CATÁLOGO</h2>
+            <input type="text" id="catalog-search-input" placeholder="Pesquisar...">
+        </header>
+
+        <div class="catalog-layout">
+            <aside class="sidebar">
+                <h3>Categorias</h3>
+                <ul id="category-list" class="category-list"></ul>
+            </aside>
+
+            <main class="content-area">
+                <div id="catalog-grid" class="catalog-grid"></div>
+            </main>
+        </div>
+    </div>
+
+    <!-- ECRÃ DO PLAYER DE VÍDEO -->
+    <div id="player-screen" class="screen">
+        <header class="app-header">
+            <button class="btn-back" onclick="switchScreen('catalog-screen')">
+                <i data-lucide="arrow-left"></i> Voltar
+            </button>
+            <h2 id="playing-title">A reproduzir...</h2>
+        </header>
+
+        <div class="player-layout">
+            <div class="video-container">
+                <video id="video-player" controls autoplay playsinline></video>
+            </div>
+            <aside class="player-sidebar">
+                <h3>Lista / Episódios</h3>
+                <ul id="sidebar-list" class="sidebar-list"></ul>
+            </aside>
+        </div>
+    </div>
+
     <script src="script.js"></script>
 </body>
 </html>
