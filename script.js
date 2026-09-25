@@ -117,40 +117,81 @@ class IPTVEngine {
 
   /**
    * 5. Monta a URL de Reprodução
+   * Ajustado para lidar com múltiplos formatos de stream em transmissões ao vivo (m3u8 / ts)
    */
-  getStreamUrl(streamId, containerExtension = 'm3u8', type = 'live') {
-    let ext = containerExtension || (type === 'live' ? 'm3u8' : 'mp4');
-    
+  getStreamUrl(streamId, containerExtension = null, type = 'live') {
     if (type === 'live') {
+      // Se tiver extensão definida (ex: ts ou m3u8), usa ela; caso contrário usa m3u8
+      const ext = containerExtension ? containerExtension : 'm3u8';
       return `${this.serverUrl}/live/${this.username}/${this.password}/${streamId}.${ext}`;
     } else if (type === 'movies') {
+      const ext = containerExtension ? containerExtension : 'mp4';
       return `${this.serverUrl}/movie/${this.username}/${this.password}/${streamId}.${ext}`;
     } else if (type === 'series') {
+      const ext = containerExtension ? containerExtension : 'mp4';
       return `${this.serverUrl}/series/${this.username}/${this.password}/${streamId}.${ext}`;
     }
   }
 
   /**
-   * 6. Tocador de Vídeo com suporte HLS
+   * 6. Tocador de Vídeo Otimizado com suporte HLS e Fallbacks para Canais Ao Vivo
    */
   playStream(videoElement, streamUrl) {
+    // Destrói instância prévia se existir
     if (this.hlsPlayer) {
       this.hlsPlayer.destroy();
       this.hlsPlayer = null;
     }
 
-    if (Hls.isSupported() && (streamUrl.includes('.m3u8') || this.currentType === 'live')) {
+    const isLive = this.currentType === 'live';
+    const isM3U8 = streamUrl.includes('.m3u8');
+
+    // Suporte HLS via hls.js (ideal para m3u8 e transmissões ao vivo)
+    if (Hls.isSupported() && (isM3U8 || isLive)) {
       this.hlsPlayer = new Hls({
         enableWorker: true,
-        lowLatencyMode: true
+        lowLatencyMode: true,
+        backBufferLength: 90,
+        liveSyncDurationCount: 3,
+        liveMaxLatencyDurationCount: 10,
+        maxBufferLength: 30
       });
+
       this.hlsPlayer.loadSource(streamUrl);
       this.hlsPlayer.attachMedia(videoElement);
+
       this.hlsPlayer.on(Hls.Events.MANIFEST_PARSED, () => {
         videoElement.play().catch(e => console.log('Autoplay bloqueado pelo navegador:', e));
       });
+
+      // Tratamento de Erros de Transmissão (Recuperação Automática)
+      this.hlsPlayer.on(Hls.Events.ERROR, (event, data) => {
+        if (data.fatal) {
+          switch (data.type) {
+            case Hls.ErrorTypes.NETWORK_ERROR:
+              console.warn('Erro de rede ao carregar o canal ao vivo. Tentando reconectar...');
+              this.hlsPlayer.startLoad();
+              break;
+            case Hls.ErrorTypes.MEDIA_ERROR:
+              console.warn('Erro de mídia na transmissão. Tentando recuperar...');
+              this.hlsPlayer.recoverMediaError();
+              break;
+            default:
+              console.error('Erro fatal no leitor HLS. Recarregando direto no elemento HTML5...');
+              this.hlsPlayer.destroy();
+              this.hlsPlayer = null;
+              videoElement.src = streamUrl;
+              videoElement.play().catch(() => {});
+              break;
+          }
+        }
+      });
+    } else if (videoElement.canPlayType('application/vnd.apple.mpegurl')) {
+      // Suporte nativo em navegadores como Safari iOS/macOS
+      videoElement.src = streamUrl;
+      videoElement.play().catch(e => console.log('Autoplay bloqueado:', e));
     } else {
-      // Suporte nativo (Safari / MP4 / TS direct)
+      // Reprodução direta para streams TS/MP4 sem HLS.js
       videoElement.src = streamUrl;
       videoElement.play().catch(e => console.log('Autoplay bloqueado:', e));
     }
@@ -174,7 +215,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (searchInput) {
     searchInput.addEventListener('input', (e) => {
       const query = e.target.value.toLowerCase().trim();
-      iptv.filteredItems = iptv.currentItems.filter(item => 0
+      iptv.filteredItems = iptv.currentItems.filter(item =>
         (item.name && item.name.toLowerCase().includes(query)) ||
         (item.title && item.title.toLowerCase().includes(query))
       );
@@ -313,7 +354,7 @@ async function selectCategory(categoryId) {
   renderCatalogGrid(items);
 }
 
-// Renderiza a grelha de capas/cards
+// Renderiza a grelha de capas/cards (com SVG local para erros de imagem)
 function renderCatalogGrid(items) {
   const grid = document.getElementById('catalog-grid');
   grid.innerHTML = '';
@@ -323,15 +364,20 @@ function renderCatalogGrid(items) {
     return;
   }
 
+  // Placeholder SVG local (Evita erros de conexão externa com via.placeholder.com)
+  const placeholderImg = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='150' height='225' viewBox='0 0 150 225'><rect width='100%' height='100%' fill='%23121a14'/><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' fill='%23888888' font-size='12' font-family='sans-serif'>Sem Imagem</text></svg>";
+
   items.forEach((item, index) => {
     const card = document.createElement('div');
     card.className = 'media-card';
 
     const name = item.name || item.title || 'Sem título';
-    const icon = item.stream_icon || item.cover || 'https://via.placeholder.com/150x225?text=Sem+Capa';
+    const icon = (item.stream_icon && item.stream_icon.trim() !== '') 
+      ? item.stream_icon 
+      : (item.cover || placeholderImg);
 
     card.innerHTML = `
-      <img class="media-poster" src="${icon}" onerror="this.src='https://via.placeholder.com/150x225?text=Sem+Imagem'" alt="${name}" loading="lazy">
+      <img class="media-poster" src="${icon}" onerror="this.onerror=null; this.src='${placeholderImg}';" alt="${name}" loading="lazy">
       <span title="${name}">${name}</span>
     `;
 
@@ -349,9 +395,9 @@ async function onMediaCardClick(item, index) {
     switchScreen('player-screen');
     loadSeriesEpisodes(item);
   } else {
-    // Para Canais e Filmes, executa direto
+    // Para Canais e Filmes
     const streamId = item.stream_id;
-    const ext = item.container_extension || (iptv.currentType === 'live' ? 'm3u8' : 'mp4');
+    const ext = item.container_extension || null;
     const streamUrl = iptv.getStreamUrl(streamId, ext, iptv.currentType);
 
     startPlayerScreen(item.name || item.title, streamUrl);
@@ -445,7 +491,7 @@ function renderSidebarPlaylist(items, currentIndex) {
       iptv.selectedItemIndex = idx;
       renderSidebarPlaylist(items, idx);
 
-      const ext = item.container_extension || (iptv.currentType === 'live' ? 'm3u8' : 'mp4');
+      const ext = item.container_extension || null;
       const streamUrl = iptv.getStreamUrl(item.stream_id, ext, iptv.currentType);
       startPlayerScreen(name, streamUrl);
     };
