@@ -22,6 +22,18 @@ class IPTVEngine {
   }
 
   /**
+   * Helper para evitar Mixed Content (HTTP em HTTPS) e problemas de CORS
+   */
+  formatUrlWithProxy(url) {
+    if (!url) return '';
+    // Se o site está em HTTPS e a URL de mídia é HTTP, usa o proxy
+    if (window.location.protocol === 'https:' && url.startsWith('http://')) {
+      return `https://corsproxy.io/?${encodeURIComponent(url)}`;
+    }
+    return url;
+  }
+
+  /**
    * 1. Autenticação na API Xtream Codes
    */
   async login(serverUrl, username, password) {
@@ -29,7 +41,8 @@ class IPTVEngine {
     this.username = encodeURIComponent(username);
     this.password = encodeURIComponent(password);
 
-    const apiUrl = `${this.serverUrl}/player_api.php?username=${this.username}&password=${this.password}`;
+    const rawApiUrl = `${this.serverUrl}/player_api.php?username=${this.username}&password=${this.password}`;
+    const apiUrl = this.formatUrlWithProxy(rawApiUrl);
 
     try {
       const response = await fetch(apiUrl);
@@ -48,7 +61,7 @@ class IPTVEngine {
       console.error('Erro de autenticação:', error);
       return { 
         success: false, 
-        message: 'Não foi possível conectar ao servidor. Verifique a URL e se o servidor permite acesso (CORS).' 
+        message: 'Não foi possível conectar ao servidor. Verifique a URL e credenciais.' 
       };
     }
   }
@@ -64,7 +77,8 @@ class IPTVEngine {
     };
 
     const action = actionMap[type] || actionMap.live;
-    const url = `${this.serverUrl}/player_api.php?username=${this.username}&password=${this.password}&action=${action}`;
+    const rawUrl = `${this.serverUrl}/player_api.php?username=${this.username}&password=${this.password}&action=${action}`;
+    const url = this.formatUrlWithProxy(rawUrl);
 
     try {
       const response = await fetch(url);
@@ -86,11 +100,13 @@ class IPTVEngine {
     };
 
     const action = actionMap[type] || actionMap.live;
-    let url = `${this.serverUrl}/player_api.php?username=${this.username}&password=${this.password}&action=${action}`;
+    let rawUrl = `${this.serverUrl}/player_api.php?username=${this.username}&password=${this.password}&action=${action}`;
 
     if (categoryId) {
-      url += `&category_id=${categoryId}`;
+      rawUrl += `&category_id=${categoryId}`;
     }
+
+    const url = this.formatUrlWithProxy(rawUrl);
 
     try {
       const response = await fetch(url);
@@ -105,7 +121,9 @@ class IPTVEngine {
    * 4. Detalhes de Séries / Episódios
    */
   async getSeriesInfo(seriesId) {
-    const url = `${this.serverUrl}/player_api.php?username=${this.username}&password=${this.password}&action=get_series_info&series_id=${seriesId}`;
+    const rawUrl = `${this.serverUrl}/player_api.php?username=${this.username}&password=${this.password}&action=get_series_info&series_id=${seriesId}`;
+    const url = this.formatUrlWithProxy(rawUrl);
+
     try {
       const response = await fetch(url);
       return await response.json();
@@ -116,28 +134,30 @@ class IPTVEngine {
   }
 
   /**
-   * 5. Monta a URL de Reprodução
-   * Ajustado para lidar com múltiplos formatos de stream em transmissões ao vivo (m3u8 / ts)
+   * 5. Monta a URL de Reprodução (Com correção para Mixed Content no GitHub Pages)
    */
   getStreamUrl(streamId, containerExtension = null, type = 'live') {
+    let rawUrl = '';
+
     if (type === 'live') {
-      // Se tiver extensão definida (ex: ts ou m3u8), usa ela; caso contrário usa m3u8
       const ext = containerExtension ? containerExtension : 'm3u8';
-      return `${this.serverUrl}/live/${this.username}/${this.password}/${streamId}.${ext}`;
+      rawUrl = `${this.serverUrl}/live/${this.username}/${this.password}/${streamId}.${ext}`;
     } else if (type === 'movies') {
       const ext = containerExtension ? containerExtension : 'mp4';
-      return `${this.serverUrl}/movie/${this.username}/${this.password}/${streamId}.${ext}`;
+      rawUrl = `${this.serverUrl}/movie/${this.username}/${this.password}/${streamId}.${ext}`;
     } else if (type === 'series') {
       const ext = containerExtension ? containerExtension : 'mp4';
-      return `${this.serverUrl}/series/${this.username}/${this.password}/${streamId}.${ext}`;
+      rawUrl = `${this.serverUrl}/series/${this.username}/${this.password}/${streamId}.${ext}`;
     }
+
+    // Aplica o proxy HTTPS para evitar o bloqueio de "Mixed Content" do navegador
+    return this.formatUrlWithProxy(rawUrl);
   }
 
   /**
-   * 6. Tocador de Vídeo Otimizado com suporte HLS e Fallbacks para Canais Ao Vivo
+   * 6. Tocador de Vídeo Otimizado com suporte HLS e Fallbacks
    */
   playStream(videoElement, streamUrl) {
-    // Destrói instância prévia se existir
     if (this.hlsPlayer) {
       this.hlsPlayer.destroy();
       this.hlsPlayer = null;
@@ -146,7 +166,6 @@ class IPTVEngine {
     const isLive = this.currentType === 'live';
     const isM3U8 = streamUrl.includes('.m3u8');
 
-    // Suporte HLS via hls.js (ideal para m3u8 e transmissões ao vivo)
     if (Hls.isSupported() && (isM3U8 || isLive)) {
       this.hlsPlayer = new Hls({
         enableWorker: true,
@@ -161,23 +180,22 @@ class IPTVEngine {
       this.hlsPlayer.attachMedia(videoElement);
 
       this.hlsPlayer.on(Hls.Events.MANIFEST_PARSED, () => {
-        videoElement.play().catch(e => console.log('Autoplay bloqueado pelo navegador:', e));
+        videoElement.play().catch(e => console.log('Autoplay bloqueado:', e));
       });
 
-      // Tratamento de Erros de Transmissão (Recuperação Automática)
       this.hlsPlayer.on(Hls.Events.ERROR, (event, data) => {
         if (data.fatal) {
           switch (data.type) {
             case Hls.ErrorTypes.NETWORK_ERROR:
-              console.warn('Erro de rede ao carregar o canal ao vivo. Tentando reconectar...');
+              console.warn('Erro de rede no canal ao vivo. Tentando reconectar...');
               this.hlsPlayer.startLoad();
               break;
             case Hls.ErrorTypes.MEDIA_ERROR:
-              console.warn('Erro de mídia na transmissão. Tentando recuperar...');
+              console.warn('Erro de mídia. Tentando recuperar...');
               this.hlsPlayer.recoverMediaError();
               break;
             default:
-              console.error('Erro fatal no leitor HLS. Recarregando direto no elemento HTML5...');
+              console.error('Erro fatal no HLS.js. Tentando HTML5 nativo...');
               this.hlsPlayer.destroy();
               this.hlsPlayer = null;
               videoElement.src = streamUrl;
@@ -187,30 +205,26 @@ class IPTVEngine {
         }
       });
     } else if (videoElement.canPlayType('application/vnd.apple.mpegurl')) {
-      // Suporte nativo em navegadores como Safari iOS/macOS
       videoElement.src = streamUrl;
       videoElement.play().catch(e => console.log('Autoplay bloqueado:', e));
     } else {
-      // Reprodução direta para streams TS/MP4 sem HLS.js
       videoElement.src = streamUrl;
       videoElement.play().catch(e => console.log('Autoplay bloqueado:', e));
     }
   }
 }
 
-// Instância Global do Engine
+// Instância Global
 const iptv = new IPTVEngine();
 
 /* =========================================================
    CONTROLADORES DA INTERFACE (UI INTEGRATION)
    ========================================================= */
 
-// Inicialização de Ícones Lucide e Relógio
 document.addEventListener('DOMContentLoaded', () => {
   if (window.lucide) lucide.createIcons();
   startClock();
 
-  // Pesquisa dinâmica no catálogo
   const searchInput = document.getElementById('catalog-search-input');
   if (searchInput) {
     searchInput.addEventListener('input', (e) => {
@@ -224,7 +238,6 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 });
 
-// Atualiza o relógio no topo
 function startClock() {
   const clockEl = document.getElementById('clock');
   if (!clockEl) return;
@@ -234,19 +247,12 @@ function startClock() {
   }, 1000);
 }
 
-// Troca de Telas (login-screen, dashboard-screen, catalog-screen, player-screen)
 function switchScreen(screenId) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   const target = document.getElementById(screenId);
   if (target) target.classList.add('active');
 }
 
-// Oculta/Exibe campos do Login (Se necessário expandir)
-function toggleFields() {
-  // Mantido para compatibilidade do formulário
-}
-
-// 1. Processa Ação de Login
 async function handleLogin(event) {
   event.preventDefault();
   const url = document.getElementById('server-url').value;
@@ -270,7 +276,6 @@ async function handleLogin(event) {
   }
 }
 
-// Logout
 function logout() {
   const video = document.getElementById('video-player');
   if (video) {
@@ -281,7 +286,6 @@ function logout() {
   switchScreen('login-screen');
 }
 
-// 2. Abrir Catálogo (Ao vivo, Filmes ou Séries)
 async function openCatalog(type) {
   iptv.currentType = type;
   const catalogTitle = document.getElementById('catalog-title');
@@ -295,10 +299,9 @@ async function openCatalog(type) {
 
   switchScreen('catalog-screen');
 
-  // Carrega Categorias
   const categoriesList = document.getElementById('category-list');
   categoriesList.innerHTML = '<li class="category-item">Carregando...</li>';
-  
+
   const grid = document.getElementById('catalog-grid');
   grid.innerHTML = '<p style="grid-column: 1/-1; text-align: center; color: #888;">Selecione uma categoria...</p>';
 
@@ -307,13 +310,11 @@ async function openCatalog(type) {
 
   renderCategorySidebar(categories);
 
-  // Seleciona a primeira categoria por padrão
   if (categories && categories.length > 0) {
     selectCategory(categories[0].category_id);
   }
 }
 
-// Renderiza a lista de categorias na barra lateral
 function renderCategorySidebar(categories) {
   const list = document.getElementById('category-list');
   list.innerHTML = '';
@@ -327,19 +328,15 @@ function renderCategorySidebar(categories) {
     const li = document.createElement('li');
     li.className = 'category-item';
     li.dataset.id = cat.category_id;
-    li.innerHTML = `
-      <span>${cat.category_name}</span>
-    `;
+    li.innerHTML = `<span>${cat.category_name}</span>`;
     li.onclick = () => selectCategory(cat.category_id);
     list.appendChild(li);
   });
 }
 
-// Seleciona Categoria e Carrega Mídias
 async function selectCategory(categoryId) {
   iptv.currentCategoryId = categoryId;
 
-  // Atualiza classe ativa na sidebar
   document.querySelectorAll('.category-item').forEach(el => {
     el.classList.toggle('active', el.dataset.id == categoryId);
   });
@@ -354,7 +351,6 @@ async function selectCategory(categoryId) {
   renderCatalogGrid(items);
 }
 
-// Renderiza a grelha de capas/cards (com SVG local para erros de imagem)
 function renderCatalogGrid(items) {
   const grid = document.getElementById('catalog-grid');
   grid.innerHTML = '';
@@ -364,7 +360,6 @@ function renderCatalogGrid(items) {
     return;
   }
 
-  // Placeholder SVG local (Evita erros de conexão externa com via.placeholder.com)
   const placeholderImg = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='150' height='225' viewBox='0 0 150 225'><rect width='100%' height='100%' fill='%23121a14'/><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' fill='%23888888' font-size='12' font-family='sans-serif'>Sem Imagem</text></svg>";
 
   items.forEach((item, index) => {
@@ -372,9 +367,11 @@ function renderCatalogGrid(items) {
     card.className = 'media-card';
 
     const name = item.name || item.title || 'Sem título';
-    const icon = (item.stream_icon && item.stream_icon.trim() !== '') 
+    const rawIcon = (item.stream_icon && item.stream_icon.trim() !== '') 
       ? item.stream_icon 
       : (item.cover || placeholderImg);
+
+    const icon = rawIcon.startsWith('http') ? iptv.formatUrlWithProxy(rawIcon) : rawIcon;
 
     card.innerHTML = `
       <img class="media-poster" src="${icon}" onerror="this.onerror=null; this.src='${placeholderImg}';" alt="${name}" loading="lazy">
@@ -386,16 +383,13 @@ function renderCatalogGrid(items) {
   });
 }
 
-// Ao clicar em uma capa
 async function onMediaCardClick(item, index) {
   iptv.selectedItemIndex = index;
 
   if (iptv.currentType === 'series') {
-    // Para Séries, carrega os episódios no menu lateral do Player
     switchScreen('player-screen');
     loadSeriesEpisodes(item);
   } else {
-    // Para Canais e Filmes
     const streamId = item.stream_id;
     const ext = item.container_extension || null;
     const streamUrl = iptv.getStreamUrl(streamId, ext, iptv.currentType);
@@ -405,7 +399,6 @@ async function onMediaCardClick(item, index) {
   }
 }
 
-// Carrega episódios se for uma Série
 async function loadSeriesEpisodes(seriesItem) {
   const titleEl = document.getElementById('playing-title');
   if (titleEl) titleEl.innerText = seriesItem.name;
@@ -424,7 +417,6 @@ async function loadSeriesEpisodes(seriesItem) {
   let firstEpisodeUrl = null;
   let firstEpisodeTitle = '';
 
-  // Agrupa episódios por temporadas
   Object.keys(data.episodes).forEach(seasonNum => {
     const header = document.createElement('li');
     header.className = 'sidebar-item';
@@ -458,7 +450,6 @@ async function loadSeriesEpisodes(seriesItem) {
     });
   });
 
-  // Toca o primeiro episódio automaticamente
   if (firstEpisodeUrl) {
     if (titleEl) titleEl.innerText = firstEpisodeTitle;
     const video = document.getElementById('video-player');
@@ -466,7 +457,6 @@ async function loadSeriesEpisodes(seriesItem) {
   }
 }
 
-// Abre o player e inicia a mídia
 function startPlayerScreen(title, streamUrl) {
   switchScreen('player-screen');
   const titleEl = document.getElementById('playing-title');
@@ -476,7 +466,6 @@ function startPlayerScreen(title, streamUrl) {
   iptv.playStream(video, streamUrl);
 }
 
-// Preenche a barra lateral de playlist do Player (Para Live e Filmes)
 function renderSidebarPlaylist(items, currentIndex) {
   const sidebarList = document.getElementById('sidebar-list');
   sidebarList.innerHTML = '';
@@ -501,7 +490,7 @@ function renderSidebarPlaylist(items, currentIndex) {
 }
 
 /* =========================================================
-   CONTROLES DO PLAYER (BOTÕES DA BARRA INFERIOR)
+   CONTROLES DO PLAYER
    ========================================================= */
 
 function playMediaControl() {
