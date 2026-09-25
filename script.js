@@ -21,7 +21,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     startClock();
     setupAutoplay();
-    setupDashboardButtons(); // Vincula ações aos botões do cabeçalho e rodapé
+    setupDashboardButtons();
 });
 
 // Relógio do Cabeçalho
@@ -48,7 +48,6 @@ function setupAutoplay() {
 
 // Vincula todos os botões sem ação prévia
 function setupDashboardButtons() {
-    // Cabeçalho
     const btnSearch = document.getElementById('btn-header-search');
     const btnBell = document.getElementById('btn-header-bell');
     const btnMultiHeader = document.getElementById('btn-header-multi');
@@ -61,7 +60,6 @@ function setupDashboardButtons() {
     if (btnMail) btnMail.onclick = () => alert('Mensagens: Sem novas mensagens do servidor.');
     if (btnDrive) btnDrive.onclick = () => alert('Listas e Gravações: Recurso de gravação indisponível no momento.');
 
-    // Rodapé
     const btnAccount = document.getElementById('btn-foot-account');
     const btnMultiFoot = document.getElementById('btn-foot-multi');
     const btnCatchup = document.getElementById('btn-foot-catchup');
@@ -77,7 +75,6 @@ function setupDashboardButtons() {
     if (btnConfig) btnConfig.onclick = () => openSettingsModal();
 }
 
-// Funções dos Botões do Dashboard e Cabeçalho
 function openGlobalSearch() {
     loadCategories('live');
     setTimeout(() => {
@@ -95,7 +92,7 @@ function openMultiScreenMode() {
 }
 
 function openSettingsModal() {
-    alert('Configurações: Definições de Reprodutor, Proxy e Formato de Transmissão (HLS/MPEG-TS).');
+    alert('Configurações: Definições de Reprodutor, Proxy e Formato de Transmissão.');
 }
 
 function loadFavorites() {
@@ -390,7 +387,7 @@ function closeSeriesModal() {
     if (modal) modal.classList.remove('active');
 }
 
-// 5. Controlo de Reprodução, Modal do Leitor e Autoplay
+// 5. Controlo de Reprodução e Modal do Leitor
 function playCurrentIndex() {
     if (currentIndex < 0 || currentIndex >= currentPlaylist.length) return;
 
@@ -401,7 +398,8 @@ function playCurrentIndex() {
     let rawStreamUrl = '';
 
     if (currentMode === 'live') {
-        rawStreamUrl = `${STREAM_BASE_URL}/${globalUsername}/${globalPassword}/${currentItem.id}.m3u8`;
+        // Padrão Xtream Codes para canais ao vivo (reproduz TS/MPEG-TS ou m3u8)
+        rawStreamUrl = `${STREAM_BASE_URL}/${globalUsername}/${globalPassword}/${currentItem.id}.ts`;
     } else if (currentMode === 'movies') {
         rawStreamUrl = `https://nivok.xyz/movie/${globalUsername}/${globalPassword}/${currentItem.id}.${currentItem.extension}`;
     } else if (currentMode === 'series' || currentItem.mode === 'series') {
@@ -429,16 +427,19 @@ function playMediaUrl(rawStreamUrl) {
         playerModal.classList.add('active');
     }
 
-    const proxiedStreamUrl = PROXY_URL + encodeURIComponent(rawStreamUrl);
-
+    // Limpa a instância anterior do HLS
     if (hlsInstance) {
         hlsInstance.destroy();
         hlsInstance = null;
     }
 
+    const proxiedStreamUrl = PROXY_URL + encodeURIComponent(rawStreamUrl);
+
+    // Se for um fluxo HLS (.m3u8)
     if (rawStreamUrl.includes('.m3u8') && Hls.isSupported()) {
         hlsInstance = new Hls({
             xhrSetup: function (xhr, url) {
+                // Garante que todas as requisições de fragmentos passem pelo proxy
                 if (!url.startsWith(PROXY_URL)) {
                     xhr.open('GET', PROXY_URL + encodeURIComponent(url), true);
                 }
@@ -449,11 +450,21 @@ function playMediaUrl(rawStreamUrl) {
         hlsInstance.attachMedia(videoPlayer);
 
         hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => {
-            videoPlayer.play().catch(e => console.warn('[IPTV] Reprodução bloqueada:', e));
+            videoPlayer.play().catch(e => console.warn('[IPTV] Reprodução bloqueada pelo navegador:', e));
+        });
+
+        hlsInstance.on(Hls.Events.ERROR, (event, data) => {
+            if (data.fatal) {
+                console.error('[IPTV] Erro fatal do HLS:', data);
+                // Tentativa de fallback direto em caso de falha no HLS
+                videoPlayer.src = proxiedStreamUrl;
+                videoPlayer.play().catch(() => {});
+            }
         });
     } else {
+        // Transmissões TS (ao vivo) ou MP4/MKV (filmes/séries)
         videoPlayer.src = proxiedStreamUrl;
-        videoPlayer.play().catch(e => console.warn('[IPTV] Reprodução bloqueada:', e));
+        videoPlayer.play().catch(e => console.warn('[IPTV] Reprodução direta bloqueada:', e));
     }
 }
 

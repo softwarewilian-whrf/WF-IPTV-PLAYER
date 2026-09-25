@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-PT">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -33,12 +33,12 @@
       <form id="auth-form">
         <div class="input-group cred-field">
           <span class="input-icon"><i data-lucide="user"></i></span>
-          <input type="text" id="username" placeholder="Utilizador" required>
+          <input type="text" id="username" placeholder="Utilizador" required autocomplete="username">
         </div>
 
         <div class="input-group cred-field">
           <span class="input-icon"><i data-lucide="lock"></i></span>
-          <input type="password" id="password" placeholder="Palavra-passe" required>
+          <input type="password" id="password" placeholder="Palavra-passe" required autocomplete="current-password">
         </div>
 
         <button type="submit" class="btn-signin">Entrar</button>
@@ -158,7 +158,7 @@
       </div>
       <div class="modal-body player-modal-body">
         <div class="video-wrapper">
-          <video id="video-player" controls autoplay></video>
+          <video id="video-player" controls autoplay playsinline preload="auto"></video>
         </div>
       </div>
     </div>
