@@ -1,6 +1,6 @@
 /**
  * ============================================================
- * WF IPTV PLAYER - SCRIPT PRINCIPAL CORRIGIDO (PROXIED HLS)
+ * WF IPTV PLAYER - SCRIPT PRINCIPAL CORRIGIDO (SEM CORSPROXY 403)
  * ============================================================
  */
 
@@ -22,7 +22,7 @@ class IPTVEngine {
   }
 
   /* ==========================================================
-     PROXY PARA SUPORTE A HTTPS E MIXED CONTENT
+     PROXY APENAS PARA REQUISIÇÕES HTTP (MIXED CONTENT)
      ========================================================== */
 
   formatUrlWithProxy(url) {
@@ -30,12 +30,12 @@ class IPTVEngine {
     const cleanUrl = String(url).trim();
     if (!cleanUrl) return '';
 
-    // Se a página atual está sob HTTPS e o recurso é HTTP, redireciona pelo proxy
+    // Se a página atual for HTTPS e a imagem/link for HTTP, ajusta
     if (
       window.location.protocol === 'https:' &&
       cleanUrl.toLowerCase().startsWith('http://')
     ) {
-      return 'https://corsproxy.io/?url=' + encodeURIComponent(cleanUrl);
+      return 'https://api.allorigins.win/raw?url=' + encodeURIComponent(cleanUrl);
     }
 
     return cleanUrl;
@@ -89,10 +89,8 @@ class IPTVEngine {
       '&password=' +
       encodeURIComponent(this.password);
 
-    const apiUrl = this.formatUrlWithProxy(rawApiUrl);
-
     try {
-      const data = await this.fetchJson(apiUrl, 'Autenticação');
+      const data = await this.fetchJson(rawApiUrl, 'Autenticação');
 
       if (data && data.user_info && Number(data.user_info.auth) === 1) {
         this.userInfo = data.user_info;
@@ -144,10 +142,8 @@ class IPTVEngine {
       '&action=' +
       action;
 
-    const url = this.formatUrlWithProxy(rawUrl);
-
     try {
-      const data = await this.fetchJson(url, 'Categorias - ' + type);
+      const data = await this.fetchJson(rawUrl, 'Categorias - ' + type);
       return Array.isArray(data) ? data : [];
     } catch (error) {
       console.error('[IPTV] Erro ao procurar categorias:', type, error);
@@ -181,10 +177,8 @@ class IPTVEngine {
       rawUrl += '&category_id=' + encodeURIComponent(categoryId);
     }
 
-    const url = this.formatUrlWithProxy(rawUrl);
-
     try {
-      const data = await this.fetchJson(url, 'Streams - ' + type);
+      const data = await this.fetchJson(rawUrl, 'Streams - ' + type);
       return Array.isArray(data) ? data : [];
     } catch (error) {
       console.error('[IPTV] Erro ao carregar streams:', type, error);
@@ -207,10 +201,8 @@ class IPTVEngine {
       '&series_id=' +
       encodeURIComponent(seriesId);
 
-    const url = this.formatUrlWithProxy(rawUrl);
-
     try {
-      return await this.fetchJson(url, 'Informações da série');
+      return await this.fetchJson(rawUrl, 'Informações da série');
     } catch (error) {
       console.error('[IPTV] Erro ao procurar episódios:', error);
       return null;
@@ -236,16 +228,13 @@ class IPTVEngine {
     const id = encodeURIComponent(streamId);
     let rawUrl = '';
 
-    // CANAIS AO VIVO: Força o formato .m3u8 para compatibilidade HLS
     if (type === 'live') {
       rawUrl = `${this.serverUrl}/live/${user}/${pass}/${id}.m3u8`;
     } 
-    // FILMES
     else if (type === 'movies') {
       let ext = containerExtension ? String(containerExtension).replace(/^\./, '') : 'mp4';
       rawUrl = `${this.serverUrl}/movie/${user}/${pass}/${id}.${ext}`;
     } 
-    // SÉRIES
     else if (type === 'series') {
       let ext = containerExtension ? String(containerExtension).replace(/^\./, '') : 'mp4';
       rawUrl = `${this.serverUrl}/series/${user}/${pass}/${id}.${ext}`;
@@ -300,7 +289,6 @@ class IPTVEngine {
       return;
     }
 
-    // Destrói a instância HLS anterior para evitar sobreposição
     if (this.hlsPlayer) {
       try {
         this.hlsPlayer.destroy();
@@ -315,17 +303,10 @@ class IPTVEngine {
     const originalUrl = String(streamUrl).trim();
     const streamType = this.detectStreamType(originalUrl);
 
-    // Encapsula a URL no Proxy se o GitHub Pages estiver em HTTPS
-    let finalStreamUrl = originalUrl;
-    if (window.location.protocol === 'https:') {
-      finalStreamUrl = 'https://corsproxy.io/?url=' + encodeURIComponent(originalUrl);
-    }
-
-    console.log('[IPTV] INICIANDO STREAM:', {
+    console.log('[IPTV] INICIANDO STREAM DIRETO:', {
       tipo: this.currentType,
       formato: streamType,
-      urlOriginal: originalUrl,
-      urlFinal: finalStreamUrl
+      url: originalUrl
     });
 
     /* --- REPRODUÇÃO HLS (.m3u8) --- */
@@ -340,17 +321,10 @@ class IPTVEngine {
           lowLatencyMode: true,
           backBufferLength: 90,
           liveSyncDurationCount: 3,
-          maxBufferLength: 30,
-          // Intercepta e redireciona os fragmentos do canal (.ts) via Proxy HTTPS
-          xhrSetup: (xhr, url) => {
-            if (window.location.protocol === 'https:' && !url.includes('corsproxy.io')) {
-              const proxiedUrl = 'https://corsproxy.io/?url=' + encodeURIComponent(url);
-              xhr.open('GET', proxiedUrl, true);
-            }
-          }
+          maxBufferLength: 30
         });
 
-        this.hlsPlayer.loadSource(finalStreamUrl);
+        this.hlsPlayer.loadSource(originalUrl);
         this.hlsPlayer.attachMedia(videoElement);
 
         this.hlsPlayer.on(window.Hls.Events.MANIFEST_PARSED, () => {
@@ -372,10 +346,9 @@ class IPTVEngine {
         return;
       }
 
-      // HLS Nativo (ex: Safari / iOS)
       if (videoElement.canPlayType('application/vnd.apple.mpegurl')) {
         console.log('[IPTV] Utilizando HLS nativo.');
-        videoElement.src = finalStreamUrl;
+        videoElement.src = originalUrl;
         videoElement.play().catch(error => console.warn('[IPTV] Autoplay bloqueado:', error));
         return;
       }
@@ -385,7 +358,7 @@ class IPTVEngine {
     }
 
     /* --- REPRODUÇÃO MP4 OU NATIVA --- */
-    videoElement.src = finalStreamUrl;
+    videoElement.src = originalUrl;
     videoElement.play().catch(error => {
       console.error('[IPTV] Erro ao reproduzir vídeo:', error);
       alert('Não foi possível reproduzir este vídeo.');
