@@ -3,439 +3,279 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Web IPTV - Portal de Canais</title>
+    <title>Web TV Player</title>
+    <!-- Tailwind CSS para o visual -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Hls.js para reprodução de streams .m3u8 no navegador -->
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     <style>
-        :root {
-            --bg-color: #0f1015;
-            --sidebar-color: #161821;
-            --card-bg: #1a1c26;
-            --card-hover: #262936;
-            --accent-color: #e50914;
-            --text-color: #ffffff;
-            --text-muted: #94a3b8;
-        }
-
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
-
-        body {
-            background-color: var(--bg-color);
-            color: var(--text-color);
-            display: flex;
-            height: 100vh;
-            overflow: hidden;
-        }
-
-        aside {
-            width: 280px;
-            background-color: var(--sidebar-color);
-            display: flex;
-            flex-direction: column;
-            border-right: 1px solid rgba(255, 255, 255, 0.05);
-            flex-shrink: 0;
-        }
-
-        .logo-area {
-            padding: 24px;
-            font-size: 1.3rem;
-            font-weight: bold;
-            color: var(--accent-color);
-            letter-spacing: 1px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-        }
-
-        .nav-tabs {
-            list-style: none;
-            overflow-y: auto;
-            flex: 1;
-            padding: 15px;
-        }
-
-        .nav-tabs::-webkit-scrollbar {
-            width: 5px;
-        }
-        .nav-tabs::-webkit-scrollbar-thumb {
-            background: rgba(255, 255, 255, 0.2);
-            border-radius: 10px;
-        }
-
-        .nav-tabs li {
-            padding: 12px 16px;
-            margin-bottom: 6px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 0.95rem;
-            font-weight: 500;
-            color: var(--text-muted);
-            transition: all 0.3s ease;
-        }
-
-        .nav-tabs li:hover {
-            background-color: rgba(255, 255, 255, 0.05);
-            color: var(--text-color);
-        }
-
-        .nav-tabs li.active {
-            background-color: var(--accent-color);
-            color: var(--text-color);
-            box-shadow: 0 4px 12px rgba(229, 9, 20, 0.3);
-        }
-
-        main {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-        }
-
-        header {
-            padding: 20px 32px;
-            background-color: var(--bg-color);
-            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        header h1 {
-            font-size: 1.4rem;
-            font-weight: 600;
-        }
-
-        .main-container {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            overflow-y: auto;
-        }
-
-        .player-container {
-            width: 100%;
-            background-color: #000;
-            display: none;
-            flex-direction: column;
-            align-items: center;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        .player-wrapper {
-            width: 100%;
-            max-width: 900px;
-            aspect-ratio: 16 / 9;
-            background: #000;
-            position: relative;
-        }
-
-        video {
-            width: 100%;
-            height: 100%;
-            outline: none;
-        }
-
-        .playing-info {
-            width: 100%;
-            max-width: 900px;
-            padding: 12px 16px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background: rgba(25, 25, 35, 0.9);
-        }
-
-        .playing-title {
-            font-size: 1rem;
-            font-weight: 600;
-            color: #fff;
-        }
-
-        .close-player {
-            background: var(--accent-color);
-            color: white;
-            border: none;
-            padding: 6px 14px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-weight: 600;
-            font-size: 0.85rem;
-        }
-
-        .content-area {
-            padding: 32px;
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-            gap: 24px;
-            align-content: start;
-        }
-
-        .channel-card {
-            background-color: transparent;
-            display: flex;
-            flex-direction: column;
-            transition: transform 0.25s ease;
-            text-decoration: none;
-            color: inherit;
-            gap: 8px;
-            cursor: pointer;
-        }
-
-        .channel-card:hover {
-            transform: scale(1.05);
-        }
-
-        .channel-poster {
-            width: 100%;
-            aspect-ratio: 2 / 3;
-            background-color: var(--card-bg);
-            border-radius: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 16px;
-            position: relative;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
-            border: 1px solid rgba(255, 255, 255, 0.04);
-            overflow: hidden;
-        }
-
-        .channel-poster img {
-            max-width: 100%;
-            max-height: 100%;
-            object-fit: contain;
-        }
-
-        .channel-info {
-            display: flex;
-            flex-direction: column;
-            gap: 2px;
-            text-align: left;
-            padding: 0 2px;
-        }
-
-        .channel-name {
-            font-size: 0.85rem;
-            font-weight: 600;
-            color: var(--text-color);
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        .channel-category {
-            font-size: 0.7rem;
-            color: var(--text-muted);
-        }
-
-        .no-logo {
-            font-size: 0.8rem;
-            color: var(--text-muted);
-            text-align: center;
-            font-weight: 500;
-        }
+        body { background-color: #0f172a; color: #f8fafc; }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #1e293b; }
+        ::-webkit-scrollbar-thumb { background: #475569; border-radius: 3px; }
     </style>
 </head>
-<body>
+<body class="min-h-screen flex flex-col">
 
-    <aside>
-        <div class="logo-area">⚡ WEB IPTV</div>
-        <ul class="nav-tabs" id="navTabs">
-            <li class="active" onclick="filterCategory('todos', this)">Todos os Canais</li>
-            <li onclick="filterCategory('Canais Globo', this)">Canais Globo</li>
-            <li onclick="filterCategory('Canais SBT', this)">Canais SBT</li>
-            <li onclick="filterCategory('Canais Band', this)">Canais Band</li>
-            <li onclick="filterCategory('Canais Record', this)">Canais Record</li>
-            <li onclick="filterCategory('Infantil', this)">Infantil e Desenhistas</li>
-            <li onclick="filterCategory('Filmes e Séries', this)">Filmes e Séries</li>
-            <li onclick="filterCategory('Esportes', this)">Esportes</li>
-            <li onclick="filterCategory('Notícias', this)">Notícias e Jornalismo</li>
-            <li onclick="filterCategory('Religiosos', this)">Religiosos</li>
-            <li onclick="filterCategory('Pluto TV', this)">Pluto TV e Fast</li>
-            <li onclick="filterCategory('Canais Portugal', this)">Canais de Portugal</li>
-        </ul>
-    </aside>
+    <!-- Cabeçalho -->
+    <header class="bg-slate-900 border-b border-slate-800 p-4 shadow-md">
+        <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+            <h1 class="text-2xl font-bold text-cyan-400 tracking-wider">Web TV Online</h1>
+            <input type="text" id="searchInput" placeholder="Pesquisar canal..." 
+                class="w-full md:w-80 bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-cyan-500">
+        </div>
+    </header>
 
-    <main>
-        <header>
-            <h1 id="categoryTitle">Todos os Canais</h1>
-        </header>
-
-        <div class="main-container">
-            <div class="player-container" id="playerContainer">
-                <div class="player-wrapper">
-                    <video id="videoPlayer" controls autoplay></video>
+    <!-- Conteúdo Principal -->
+    <main class="flex-1 max-w-7xl w-full mx-auto p-4 grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        <!-- Player de Vídeo -->
+        <div class="lg:col-span-2 flex flex-col gap-4">
+            <div class="relative w-full aspect-video bg-black rounded-xl overflow-hidden shadow-2xl border border-slate-800 flex items-center justify-center">
+                
+                <video id="videoPlayer" class="w-full h-full object-contain" controls autoplay playsinline></video>
+                
+                <!-- Overlay de Erro para bloqueio por CORS -->
+                <div id="errorOverlay" class="hidden absolute inset-0 bg-slate-950/90 flex flex-col items-center justify-center p-6 text-center z-10">
+                    <p class="text-red-400 font-semibold mb-2">Este canal bloqueia a reprodução direta via navegador (CORS).</p>
+                    <p class="text-xs text-slate-400 mb-4 max-w-md">Para assistir a este sinal, utilize um aplicativo IPTV nativo ou abra o link diretamente.</p>
+                    <a id="externalLinkBtn" href="#" target="_blank" rel="noopener noreferrer" 
+                        class="bg-cyan-600 hover:bg-cyan-500 text-white text-sm font-medium px-5 py-2.5 rounded-lg transition-colors shadow-lg">
+                        Abrir Sinal Direto
+                    </a>
                 </div>
-                <div class="playing-info">
-                    <span class="playing-title" id="playingTitle">Assistindo: Canal</span>
-                    <button class="close-player" onclick="closePlayer()">Fechar Player</button>
-                </div>
+
             </div>
 
-            <div class="content-area" id="channelContainer"></div>
+            <!-- Informações do Canal Atual -->
+            <div id="currentChannelInfo" class="bg-slate-800/50 p-4 rounded-xl border border-slate-800">
+                <h2 id="channelTitle" class="text-xl font-semibold text-white">Selecione um canal</h2>
+                <p id="channelCategory" class="text-sm text-slate-400">Categoria: --</p>
+            </div>
         </div>
+
+        <!-- Seção Lateral: Filtros e Lista de Canais -->
+        <div class="flex flex-col gap-4 bg-slate-900/60 p-4 rounded-xl border border-slate-800 h-[600px] lg:h-auto">
+            <div id="categoryButtons" class="flex gap-2 overflow-x-auto pb-2 scrollbar-thin"></div>
+            <div id="channelsList" class="flex-1 overflow-y-auto flex flex-col gap-2 pr-1"></div>
+        </div>
+
     </main>
 
+    <!-- Scripts da Aplicação -->
     <script>
         const channels = [
+            // --- CANAIS GLOBO ---
+            { name: "Rede Globo (720p)", category: "Canais Globo", logo: "https://i.imgur.com/O02TF2r.png", url: "https://media2.cdntvms.com.br/tv_morena_dorados/index.m3u8" },
             { name: "Rede Globo (1080p)", category: "Canais Globo", logo: "https://i.imgur.com/O02TF2r.png", url: "https://cdn-sp2.satlabscloud.com.br/RBS_HD/index.m3u8?token=Mw3YKkujzIi9hYQJ6kAQjQvly2VdBNuGPjHOq" },
-            { name: "TV Bahia (1080i)", category: "Canais Globo", logo: "https://i.imgur.com/sJOrvHg.png", url: "https://hls1.sua.tv/live/globotvbahiafhdbr2/s.m3u8" },
+            { name: "TV Globo Sao Paulo (720p)", category: "Canais Globo", logo: "https://i.imgur.com/OoSUg78.png", url: "https://cdn-5.nxplay.com.br/GLOBO_SP_TK/index.m3u8" },
+            { name: "ge Fast (1080p) - Servidor 1", category: "Canais Globo", logo: "https://i.imgur.com/O02TF2r.png", url: "https://amg00716-globo-amg00716c1-tcl-br-9495.playouts.now.amagi.tv/playlist.m3u8" },
+            { name: "ge Fast (1080p) - Servidor 2", category: "Canais Globo", logo: "https://i.imgur.com/O02TF2r.png", url: "https://dfr80qz435crc.cloudfront.net/EFGH/Amagi/Globo/GE_Fast_BR/GE_Fast.m3u8" },
+
+            // --- CANAIS SBT ---
+            { name: "SBT Interior (720p)", category: "Canais SBT", logo: "https://i.imgur.com/IkZfa4j.png", url: "https://cdn.jmvstream.com/w/LVW-10801/LVW10801_Xvg4R0u57n/playlist.m3u8" },
+            { name: "SBT Nacional (720p)", category: "Canais SBT", logo: "https://i.imgur.com/tc1ALuu.png", url: "https://6836041ea1117.streamlock.net/cverde/cverde/playlist.m3u8" },
+            { name: "SBT Nacional (576p)", category: "Canais SBT", logo: "https://i.imgur.com/tc1ALuu.png", url: "https://media.cdntvms.com.br/sbt_sat/index.m3u8" },
             { name: "SBT Nacional (1080p)", category: "Canais SBT", logo: "https://i.imgur.com/tc1ALuu.png", url: "https://cdn.live.br1.jmvstream.com/w/LVW-10801/LVW10801_Xvg4R0u57n/chunklist.m3u8" },
             { name: "SBT News (720p)", category: "Canais SBT", logo: "https://upload.wikimedia.org/wikipedia/commons/4/42/SBT_News_2025.svg", url: "https://dai.google.com/linear/hls/event/1XSOdtQ0SH2G8OEmEfGgjQ/master.m3u8" },
-            { name: "SBT Interior (720p)", category: "Canais SBT", logo: "https://i.imgur.com/IkZfa4j.png", url: "https://cdn.jmvstream.com/w/LVW-10801/LVW10801_Xvg4R0u57n/playlist.m3u8" },
-            { name: "SBT Cuiaba", category: "Canais SBT", logo: "https://i.imgur.com/EZJWQ3i.png", url: "https://video09.logicahost.com.br/sbtcuiaba/sbtcuiaba/playlist.m3u8" },
             { name: "SBT Nova Mutum", category: "Canais SBT", logo: "https://upload.wikimedia.org/wikipedia/pt/d/d0/Logotipo_do_SBT_Nova_Mutum.png", url: "https://video09.logicahost.com.br/sbtmutum/sbtmutum/playlist.m3u8" },
             { name: "SBT Rondonopolis", category: "Canais SBT", logo: "https://upload.wikimedia.org/wikipedia/pt/d/d5/Logotipo_do_SBT_Rondon%C3%B3polis.png", url: "https://video09.logicahost.com.br/sbtroo/sbtroo/playlist.m3u8" },
+            { name: "SBTCuiaba", category: "Canais SBT", logo: "https://i.imgur.com/EZJWQ3i.png", url: "https://video09.logicahost.com.br/sbtcuiaba/sbtcuiaba/playlist.m3u8" },
             { name: "Show do Milhao (1080p)", category: "Canais SBT", logo: "https://upload.wikimedia.org/wikipedia/pt/b/b2/Show_do_Milh%C3%A3o_Logo_2024.webp", url: "https://d38s7rrdbnh4oy.cloudfront.net/v1/master/215c0da80606fed29372070168106400a6ca7e1a/SSAI-Saudades/index.m3u8" },
+
+            // --- CANAIS BAND ---
+            { name: "Band (576p)", category: "Canais Band", logo: "https://i.imgur.com/1r5T6Pw.png", url: "https://media.cdntvms.com.br/band_sat/index.m3u8" },
             { name: "BandNews (1080p)", category: "Canais Band", logo: "https://i.ibb.co/0jVZBFp/u8ya-iw-R-400x400.jpg", url: "https://cdn-5.nxplay.com.br/BAND_NEWS/index.m3u8" },
-            { name: "Pluto TV Record News (720p)", category: "Canais Record", logo: "https://images.pluto.tv/channels/6102e04e9ab1db0007a980a1/colorLogoPNG.png", url: "https://jmp2.uk/plu-6102e04e9ab1db0007a980a1.m3u8" },
-            { name: "CINDIE TV (1080p)", category: "Filmes e Séries", logo: "https://a.jsrdn.com/hls/23208/cindie-tv/logo_20250225_222520_68.png", url: "https://cc-hqw8u5r1nshjc.akamaized.net/scheduler/scheduleMaster/352.m3u8" },
-            { name: "Classique TV (360p)", category: "Filmes e Séries", logo: "https://i.imgur.com/rHxcraT.png", url: "https://stmv1.srvif.com/classique/classique/playlist.m3u8" },
-            { name: "Series Classic (720p)", category: "Filmes e Séries", logo: "https://storage.googleapis.com/soultv-prod-media/media/img/mobile/featured/bg_mobile.jpg", url: "https://cdn-tiva-video10-logicahost-com-br.smartbit.co/serieclassic/serieclassic/playlist.m3u8" },
-            { name: "TV Series (480p)", category: "Filmes e Séries", logo: "https://i.imgur.com/Ff5mj0o.png", url: "https://stmv1.srvif.com/tvserie/tvserie/playlist.m3u8" },
-            { name: "MyTime Movie Network (720p)", category: "Filmes e Séries", logo: "https://i.imgur.com/aiGQtzI.png", url: "https://appletree-mytime-samsungbrazil.amagi.tv/playlist.m3u8" },
-            { name: "Adrenalina Pura TV Brazil", category: "Filmes e Séries", logo: "https://i.imgur.com/Pvid2iH.png", url: "https://jmp2.uk/plu-61b790b985706b00072cb797.m3u8" },
-            { name: "Filmes Suspense", category: "Filmes e Séries", logo: "https://images.pluto.tv/channels/5f171d3442a0500007362f22/colorLogoPNG.png", url: "https://jmp2.uk/plu-5f171d3442a0500007362f22.m3u8" },
-            { name: "Cine Terror BR", category: "Filmes e Séries", logo: "https://images.pluto.tv/channels/5f12111c9e6c2c00078ef3bb/colorLogoPNG.png", url: "https://jmp2.uk/plu-5f12111c9e6c2c00078ef3bb.m3u8" },
-            { name: "CSI: Miami BR", category: "Filmes e Séries", logo: "https://images.pluto.tv/channels/63eb9c5351f5d000085e8d7e/colorLogoPNG.png", url: "https://jmp2.uk/plu-63eb9c5351f5d000085e8d7e.m3u8" },
-            { name: "NCIS (United States)", category: "Filmes e Séries", logo: "https://images.pluto.tv/channels/63eb9fdda995710008991c54/colorLogoPNG.png", url: "https://jmp2.uk/plu-63eb9fdda995710008991c54.m3u8" },
-            { name: "MacGyver (United States)", category: "Filmes e Séries", logo: "https://images.pluto.tv/channels/63eb9dc84e83e70008abea92/colorLogoPNG.png", url: "https://jmp2.uk/plu-63eb9dc84e83e70008abea92.m3u8" },
-            { name: "Numbers (United States)", category: "Filmes e Séries", logo: "https://images.pluto.tv/channels/67f960c5441853fe50e7afc1/colorLogoPNG_1747430170532.png", url: "https://jmp2.uk/plu-67f960c5441853fe50e7afc1.m3u8" },
-            { name: "AWTV (1080p)", category: "Filmes e Séries", logo: "https://i.imgur.com/2tdMyef.png", url: "https://awtv.nuvemplay.live/hls/stream.m3u8" },
-            { name: "Gloob Web [Not 24/7]", category: "Infantil", logo: "https://i.ibb.co/wrQZXZ01/C-pia-de-Blue-Modern-Simple-Logo.png", url: "https://vs20.live.opencaster.com/globiosat_73a904af/index.m3u8" },
-            { name: "NickOnline HD (720p)", category: "Infantil", logo: "https://x1colegal.com/logo.png", url: "https://x1colegal.com/hls/stream.m3u8" },
-            { name: "Nickelodeon (Brazil) (480p)", category: "Infantil", logo: "https://i.imgur.com/E84jnP8.png", url: "https://stmv2.srvif.com/nicktoons/nicktoons/playlist.m3u8" },
-            { name: "SBT Kids (1080p)", category: "Infantil", logo: "https://upload.wikimedia.org/wikipedia/pt/1/19/SBTKids2026.png", url: "https://8994803e454548319ffc0775bc04e0c1.mediatailor.us-east-1.amazonaws.com/v1/master/215c0da80606fed29372070168106400a6ca7e1a/SSAI-TVZyn/index.m3u8" },
-            { name: "Retro Cartoon (720p)", category: "Infantil", logo: "https://i.imgur.com/hIlEfhl.png", url: "https://stmv1.video.brstream.com.br/retrotv/retrotv/chunklist_w1069200121.m3u8" },
-            { name: "Avatar: A lenda de Aang", category: "Infantil", logo: "https://images.pluto.tv/channels/6759eeb1bd523200083b4f29/colorLogoPNG.png", url: "https://jmp2.uk/plu-6759eeb1bd523200083b4f29.m3u8" },
-            { name: "Bob Esponja Calca Quadrada", category: "Infantil", logo: "https://images.pluto.tv/channels/62545c0b002f4b0007688b61/colorLogoPNG.png", url: "https://jmp2.uk/plu-62545c0b002f4b0007688b61.m3u8" },
-            { name: "Turma da Monica (720p)", category: "Infantil", logo: "https://i.imgur.com/nrvPPrW.png", url: "https://jmp2.uk/plu-5f997e44949bc70007a6941e.m3u8" },
-            { name: "Naruto Brazil", category: "Infantil", logo: "https://i.imgur.com/M8X3Kvc.png", url: "https://jmp2.uk/plu-5f6df5a173d7340007c559f7.m3u8" },
-            { name: "Tokusato", category: "Infantil", logo: "https://i.imgur.com/tWpjXtl.png", url: "https://jmp2.uk/plu-5ff609de50ab210008025c1b.m3u8" },
-            { name: "BabyFirst Brazil", category: "Infantil", logo: "https://i.imgur.com/WxLHBwu.png", url: "https://jmp2.uk/plu-5f4fb4cf605ddf000748e16f.m3u8" },
+
+            // --- ESPORTES ---
             { name: "Band Sports (1080p)", category: "Esportes", logo: "https://i.imgur.com/EuPvzJe.png", url: "https://cdn-5.nxplay.com.br/BAND_SPORTS/index.m3u8" },
             { name: "N Sports (1080p)", category: "Esportes", logo: "https://i.imgur.com/7QnJojr.png", url: "https://ogc-nsprt-tcl-roku-syndication.otteravision.com/ogc/nsprt/nsprt.m3u8" },
-            { name: "Canal do Inter (720p)", category: "Esportes", logo: "https://i.imgur.com/TQFWEIS.png", url: "https://video01.soultv.com.br/internacional/internacional/playlist.m3u8" },
-            { name: "FIFA+ Portuguese (720p)", category: "Esportes", logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9c/FIFA%2B_(2025).svg/960px-FIFA%2B_(2025).svg.png", url: "https://e3be9ac5.wurl.com/master/f36d25e7e52f1ba8d7e56eb859c636563214f541/TEctYnJfRklGQVBsdXNQb3J0ugVlc2VfHlUvplaylist.m3u8" },
-            { name: "Red Bull TV BR (1080p)", category: "Esportes", logo: "https://images.pluto.tv/channels/5e7cb84a172a0f0007da69e4/colorLogoPNG.png", url: "https://d03ae6b5c6724c24867e97a3dc04934a.mediatailor.us-west-2.amazonaws.com/v1/master/ba62fe743df0fe93366eba3a257d792884136c7f/LINEAR-1026-WORBBRPTFAST-WHALETVPLUS/1026/hls/master/playlist.m3u8" },
-            { name: "Pluto TV Esportes", category: "Esportes", logo: "https://images.pluto.tv/channels/5f32d2db0af67400077f29c4/colorLogoSVG_1780355759776.svg", url: "https://jmp2.uk/plu-5f32d2db0af67400077f29c4.m3u8" },
+            { name: "Realmadrid TV (720p)", category: "Esportes", logo: "", url: "https://jmp2.uk/plu-63dac28760bc8f0008a7654b.m3u8" },
+            { name: "Red Bull TV BR (720p)", category: "Esportes", logo: "https://images.pluto.tv/channels/5e7cb84a172a0f0007da69e4/colorLogoPNG.png", url: "https://jmp2.uk/plu-67813f3162bf016db944c9ab.m3u8" },
+            { name: "Top Barça (720p)", category: "Esportes", logo: "", url: "https://jmp2.uk/plu-6888ee858f4a4aa11feb9430.m3u8" },
+            { name: "UFC", category: "Esportes", logo: "", url: "https://jmp2.uk/plu-69a20556814d27f4ae630a92.m3u8" },
+            { name: "World Poker Tour", category: "Esportes", logo: "", url: "https://jmp2.uk/plu-63eba66da8b2270008436b10.m3u8" },
+            { name: "FIFA+", category: "Esportes", logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9c/FIFA%2B_(2025).svg/960px-FIFA%2B_(2025).svg.png", url: "https://jmp2.uk/plu-66997e8d3a4ad20008e50be9.m3u8" },
+            { name: "PFL MMA (720p)", category: "Esportes", logo: "", url: "https://jmp2.uk/plu-64f6180130ab3300083d896b.m3u8" },
+            { name: "SFT Combat (720p)", category: "Esportes", logo: "", url: "https://jmp2.uk/plu-6660b636cb3ea10008429c6a.m3u8" },
+
+            // --- FILMES E SÉRIES ---
+            { name: "Sony Channel (720p)", category: "Filmes e Séries", logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b9/Sony_Channel_Logo.png/960px-Sony_Channel_Logo.png", url: "https://cdn-5.nxplay.com.br/SONY_CHANNEL/index.m3u8" },
+            { name: "CINDIE TV (1080p) - Opção 1", category: "Filmes e Séries", logo: "https://a.jsrdn.com/hls/23208/cindie-tv/logo_20250225_222520_68.png", url: "https://cc-hqw8u5r1nshjc.akamaized.net/scheduler/scheduleMaster/352.m3u8" },
+            { name: "CINDIE TV (1080p) - Opção 2", category: "Filmes e Séries", logo: "https://a.jsrdn.com/hls/23208/cindie-tv/logo_20250225_222520_68.png", url: "https://d20xuwbyc4yoag.cloudfront.net/v1/master/9d062541f2ff39b5c0f48b743c6411d25f62fc25/DistroTV-MuxIP-CINDIE/387.m3u8?ads.vf=grWTpG3NQNi" },
+            { name: "Classique TV (360p)", category: "Filmes e Séries", logo: "https://i.imgur.com/rHxcraT.png", url: "https://stmv1.srvif.com/classique/classique/playlist.m3u8" },
+            { name: "Series Classic (720p)", category: "Filmes e Séries", logo: "https://storage.googleapis.com/soultv-prod-media/media/img/mobile/featured/bg_mobile.jpg", url: "https://cdn-tiva-video10-logicahost-com-br.smartbit.co/serieclassic/serieclassic/playlist.m3u8" },
+            { name: "TV Series 1 As Panteras (480p)", category: "Filmes e Séries", logo: "https://i.imgur.com/Ff5mj0o.png", url: "https://stmv1.srvif.com/tvserie/tvserie/playlist.m3u8" },
+            { name: "MyTime Movie Network Brazil (720p)", category: "Filmes e Séries", logo: "https://i.imgur.com/aiGQtzI.png", url: "https://appletree-mytime-samsungbrazil.amagi.tv/playlist.m3u8" },
+            { name: "Adrenalina Pura TV", category: "Filmes e Séries", logo: "https://i.imgur.com/Pvid2iH.png", url: "https://jmp2.uk/plu-61b790b985706b00072cb797.m3u8" },
+            { name: "Filmes Suspense", category: "Filmes e Séries", logo: "https://images.pluto.tv/channels/5f171d3442a0500007362f22/colorLogoPNG.png", url: "https://jmp2.uk/plu-5f171d3442a0500007362f22.m3u8" },
+            { name: "Runtime", category: "Filmes e Séries", logo: "", url: "https://jmp2.uk/plu-62c5d32e2c48f9000715b6e9.m3u8" },
+
+            // --- INFANTIL E DESENHOS ---
+            { name: "Gloob Web [Not 24/7]", category: "Infantil", logo: "https://i.ibb.co/wrQZXZ01/C-pia-de-Blue-Modern-Simple-Logo.png", url: "https://vs20.live.opencaster.com/globiosat_73a904af/index.m3u8" },
+            { name: "NickOnline HD (720p)", category: "Infantil", logo: "https://x1colegal.com/logo.png", url: "https://x1colegal.com/hls/stream.m3u8" },
+            { name: "Nickelodeon (480p)", category: "Infantil", logo: "https://i.imgur.com/E84jnP8.png", url: "https://stmv2.srvif.com/nicktoons/nicktoons/playlist.m3u8" },
+            { name: "SBT Kids (1080p)", category: "Infantil", logo: "https://upload.wikimedia.org/wikipedia/pt/1/19/SBTKids2026.png", url: "https://8994803e454548319ffc0775bc04e0c1.mediatailor.us-east-1.amazonaws.com/v1/master/215c0da80606fed29372070168106400a6ca7e1a/SSAI-TVZyn/index.m3u8" },
+            { name: "Slime (576p)", category: "Infantil", logo: "", url: "https://slime.x1co.com.br/hls/stream.m3u8" },
+            { name: "Retro Cartoon (720p)", category: "Infantil", logo: "https://i.imgur.com/hIlEfhl.png", url: "https://stmv1.video.brstream.com.br/retrotv/retrotv/chunklist_w1069200121.m3u8" },
+            { name: "Avatar: A lenda de Aang", category: "Infantil", logo: "https://images.pluto.tv/channels/6759eeb1bd523200083b4f29/colorLogoPNG.png", url: "https://jmp2.uk/plu-6759eeb1bd523200083b4f29.m3u8" },
+            { name: "Baby Shark TV", category: "Infantil", logo: "", url: "https://jmp2.uk/plu-63da6bcd60bc8f0008a5d364.m3u8" },
+            { name: "Babyfirst", category: "Infantil", logo: "https://i.imgur.com/WxLHBwu.png", url: "https://jmp2.uk/plu-5f4fb4cf605ddf000748e16f.m3u8" },
+            { name: "Beyblade", category: "Infantil", logo: "", url: "https://jmp2.uk/plu-633dc392e0282400071b0d39.m3u8" },
+            { name: "Bob Esponja Calça Quadrada (720p)", category: "Infantil", logo: "https://images.pluto.tv/channels/62545c0b002f4b0007688b61/colorLogoPNG.png", url: "https://jmp2.uk/plu-62545c0b002f4b0007688b61.m3u8" },
+            { name: "Boruto: Naruto Next Generations", category: "Infantil", logo: "", url: "https://jmp2.uk/plu-656f389c3944b60008e5bdab.m3u8" },
+            { name: "Cocoricó", category: "Infantil", logo: "", url: "https://jmp2.uk/plu-62d969fd8451a30007f0fd94.m3u8" },
+            { name: "Death Note", category: "Infantil", logo: "", url: "https://jmp2.uk/plu-625464a945b6a200079257d1.m3u8" },
+            { name: "Hunter x Hunter", category: "Infantil", logo: "", url: "https://jmp2.uk/plu-65d9167818036500080e8780.m3u8" },
+            { name: "Inspetor Bugiganga", category: "Infantil", logo: "", url: "https://jmp2.uk/plu-69162648d03565d6c8c8df97.m3u8" },
+            { name: "Inuyasha", category: "Infantil", logo: "", url: "https://jmp2.uk/plu-66b26681d2d50d00083abe8b.m3u8" },
+            { name: "JoJo’s Bizarre Adventure", category: "Infantil", logo: "", url: "https://jmp2.uk/plu-66c7982f6838ee00085f0d24.m3u8" },
+            { name: "Kenan & Kel", category: "Infantil", logo: "", url: "https://jmp2.uk/plu-5ffcc5130fd98c0007f2e216.m3u8" },
+            { name: "Moranguinho", category: "Infantil", logo: "", url: "https://jmp2.uk/plu-63eba189c111bc0008ff59c5.m3u8" },
+            { name: "Naruto", category: "Infantil", logo: "https://i.imgur.com/M8X3Kvc.png", url: "https://jmp2.uk/plu-5f6df5a173d7340007c559f7.m3u8" },
+            { name: "Naruto Shippuden", category: "Infantil", logo: "", url: "https://jmp2.uk/plu-64c92f965580090008084968.m3u8" },
+            { name: "Nick Jr. Club (720p)", category: "Infantil", logo: "", url: "https://jmp2.uk/plu-6824ce95f09106f4b18f4114.m3u8" },
+            { name: "Nickelodeon Clássico (720p)", category: "Infantil", logo: "", url: "https://jmp2.uk/plu-6824ce10c5d53e1351ceb8d1.m3u8" },
+            { name: "Nickelodeon iCarly", category: "Infantil", logo: "", url: "https://jmp2.uk/plu-620ff46e0a576e0007dc2f89.m3u8" },
+            { name: "Nickelodeon Teen (720p)", category: "Infantil", logo: "", url: "https://jmp2.uk/plu-60f5fabf0721880007cd50e3.m3u8" },
+            { name: "Nickelodeon Toons (720p)", category: "Infantil", logo: "", url: "https://jmp2.uk/plu-645951c0e94c38000802d2cb.m3u8" },
+            { name: "Oggy e as Baratas Tontas", category: "Infantil", logo: "", url: "https://jmp2.uk/plu-63221bafdc6e110007b50270.m3u8" },
+            { name: "One Piece", category: "Infantil", logo: "", url: "https://jmp2.uk/plu-624b1c8d4321e200073ee421.m3u8" },
+            { name: "Os Padrinhos Mágicos", category: "Infantil", logo: "", url: "https://jmp2.uk/plu-63221e41af69b500076f84e7.m3u8" },
+            { name: "Os Smurfs", category: "Infantil", logo: "", url: "https://jmp2.uk/plu-68b88ae1943f6fb1fb2ad749.m3u8" },
+            { name: "Pokémon", category: "Infantil", logo: "", url: "https://jmp2.uk/plu-687007a8ee4155e89a8f6d67.m3u8" },
+            { name: "Popeye", category: "Infantil", logo: "", url: "https://jmp2.uk/plu-677d93f37bffa600080795e7.m3u8" },
+            { name: "Super Onze", category: "Infantil", logo: "", url: "https://jmp2.uk/plu-63988c2750108d00072e2686.m3u8" },
+            { name: "Teletubbies", category: "Infantil", logo: "", url: "https://jmp2.uk/plu-64e50055286f6b000838c067.m3u8" },
+            { name: "Turma da Mônica (720p)", category: "Infantil", logo: "https://i.imgur.com/nrvPPrW.png", url: "https://jmp2.uk/plu-5f997e44949bc70007a6941e.m3u8" },
+            { name: "Yu-Gi-Oh", category: "Infantil", logo: "", url: "https://jmp2.uk/plu-63988a50be012600070f5db3.m3u8" },
+
+            // --- NOTÍCIAS E JORNALISMO ---
+            { name: "Jovem Pan News (1080p)", category: "Notícias", logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/2/26/Jovem_Pan_logo_2018.svg/960px-Jovem_Pan_logo_2018.svg.png", url: "https://d6yfbj4xxtrod.cloudfront.net/out/v1/7836eb391ec24452b149f3dc6df15bbd/index.m3u8" },
+            { name: "Jovem Pan NEWS (720p)", category: "Notícias", logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/2/26/Jovem_Pan_logo_2018.svg/960px-Jovem_Pan_logo_2018.svg.png", url: "https://jmp2.uk/plu-6317ba014d4d040007227f72.m3u8" },
             { name: "CNN Brasil (1080p)", category: "Notícias", logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5f/CNN_Brasil.svg/960px-CNN_Brasil.svg.png", url: "https://d25usgadhphvwi.cloudfront.net/hls/main.m3u8" },
-            { name: "Times Brasil (720p)", category: "Notícias", logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/b/bc/Times_Brasil_CNBC_logo_2025.svg/960px-Times_Brasil_CNBC_logo_2025.svg.png", url: "https://ssai2-ads.api.leiniao.com/global-adinsertion-api/hls/live/v2/21fdb6dd7491406bba86497a24390a25/playlist.m3u8" },
             { name: "BM&C News (720p)", category: "Notícias", logo: "https://i.imgur.com/pOUY2Uz.png", url: "https://jmp2.uk/plu-666c9c60a7efd40008f552f0.m3u8" },
-            { name: "VEJA+ TV (1080p)", category: "Notícias", logo: "https://i.imgur.com/n0pxHo4.png", url: "https://gpa-vja.otteravision.com/gpa/vja/vja.m3u8" },
-            { name: "Euronews Portuguese (720p)", category: "Notícias", logo: "https://i.imgur.com/8t9mdg9.png", url: "https://jmp2.uk/plu-619e6614c9d9650007a2b171.m3u8" },
-            { name: "Rede Gospel (1080p)", category: "Religiosos", logo: "https://i.imgur.com/mttSwgO.png", url: "https://cdn.live.br1.jmvstream.com/w/LVW-8719/LVW8719_AcLVAxWy5J/playlist.m3u8" },
-            { name: "IMPD TV Worldwide (1080p)", category: "Religiosos", logo: "https://i.imgur.com/9dW3AUQ.png", url: "https://igrejamundial.nuvemplay.live/hls/stream.m3u8" },
-            { name: "Boas Novas (1080p)", category: "Religiosos", logo: "https://i.imgur.com/ZqhizdP.png", url: "https://cdn.jmvstream.com/w/LVW-9375/LVW9375_6i0wPBCHYc/playlist.m3u8" },
-            { name: "TV Universal (480p)", category: "Religiosos", logo: "https://i.imgur.com/TIsk5zN.png", url: "https://644398c.ha.azioncdn.net/primary/tvuniversal_480p.sdp/playlist.m3u8" },
-            { name: "RIT TV (1080p)", category: "Religiosos", logo: "https://i.imgur.com/Unjs1wi.png", url: "https://acesso.ecast.site:3648/live/ritlive.m3u8" },
-            { name: "Kuriakos TV (1080p)", category: "Religiosos", logo: "https://i.imgur.com/xdAW0D5.png", url: "https://w1.manasat.com/ktv/smil:ktv.smil/playlist.m3u8" },
-            { name: "Pluto TV Cine Sucessos", category: "Pluto TV", logo: "https://images.pluto.tv/channels/5f120e94a5714d00074576a1/colorLogoPNG.png", url: "https://jmp2.uk/plu-5f120e94a5714d00074576a1.m3u8" },
-            { name: "Pluto TV Filmes Acao", category: "Pluto TV", logo: "https://images.pluto.tv/channels/5f120f41b7d403000783a6d6/colorLogoPNG.png", url: "https://jmp2.uk/plu-5f120f41b7d403000783a6d6.m3u8" },
-            { name: "Pluto TV Cine Classicos", category: "Pluto TV", logo: "https://images.pluto.tv/channels/5fa1612a669ba0000702017b/colorLogoPNG_1733440556804.png", url: "https://jmp2.uk/plu-5fa1612a669ba0000702017b.m3u8" },
-            { name: "Pluto TV Cine Drama", category: "Pluto TV", logo: "https://images.pluto.tv/channels/5f1210d14ae1f80007bafb1d/colorLogoPNG.png", url: "https://jmp2.uk/plu-5f1210d14ae1f80007bafb1d.m3u8" },
-            { name: "Pluto TV Anime BR", category: "Pluto TV", logo: "https://images.pluto.tv/channels/5f12136385bccc00070142ed/colorLogoPNG_1777595293242.png", url: "https://jmp2.uk/plu-5f12136385bccc00070142ed.m3u8" },
-            { name: "Pluto TV Novelas BR", category: "Pluto TV", logo: "https://images.pluto.tv/channels/5f512365abe1f50007d3ff56/colorLogoPNG.png", url: "https://jmp2.uk/plu-5f512365abe1f50007d3ff56.m3u8" },
-            { name: "Pluto TV Netmovies", category: "Pluto TV", logo: "https://images.pluto.tv/channels/663b9de4f999220008230fa8/colorLogoPNG.png", url: "https://jmp2.uk/plu-663b9de4f999220008230fa8.m3u8" },
-            { name: "Pluto TV Aliens", category: "Pluto TV", logo: "https://images.pluto.tv/channels/6806d65e84f24b70109485fa/colorLogoPNG_1746817107468.png", url: "https://jmp2.uk/plu-6806d65e84f24b70109485fa.m3u8" },
-            { name: "MTV Pluto TV BR", category: "Pluto TV", logo: "https://images.pluto.tv/channels/5f1212fb81e85c00077ae9ef/colorLogoPNG_1759263027326.png", url: "https://jmp2.uk/plu-5f1212fb81e85c00077ae9ef.m3u8" },
-            { name: "BET Pluto TV BR", category: "Pluto TV", logo: "https://images.pluto.tv/channels/5ff768b6a4c8b80008498610/colorLogoPNG_1756804608228.png", url: "https://jmp2.uk/plu-5ff768b6a4c8b80008498610.m3u8" },
-            { name: "RTP 1 (720p)", category: "Canais Portugal", logo: "https://cdn-images.rtp.pt/common/img/channels/logos/color/horizontal/rtp1_2026.png", url: "https://streaming-live.rtp.pt/liverepeater/rtp1HD.smil/playlist.m3u8" },
-            { name: "RTP 2 (720p)", category: "Canais Portugal", logo: "https://cdn-images.rtp.pt/common/img/channels/logos/color/horizontal/rtp2_2026.png", url: "https://streaming-live.rtp.pt/liverepeater/rtp2HD.smil/playlist.m3u8" },
-            { name: "RTP Noticias (720p)", category: "Canais Portugal", logo: "https://cdn-images.rtp.pt/common/img/channels/logos/color/horizontal/rtpnoticias_2026.png", url: "https://streaming-live.rtp.pt/livetvhlsDVR/rtpnHDdvr.smil/playlist.m3u8" },
-            { name: "SIC (1080p)", category: "Canais Portugal", logo: "https://i.imgur.com/SPMqiDG.png", url: "https://sic.live.impresa.pt/sic.m3u8" },
-            { name: "SIC Noticias (1080p)", category: "Canais Portugal", logo: "https://i.imgur.com/Gi6Q26M.png", url: "https://sicnot.live.impresa.pt/sicnot.m3u8" },
-            { name: "TVI (720p)", category: "Canais Portugal", logo: "https://i.imgur.com/H8Tgl7m.png", url: "https://raw.githubusercontent.com/thomraider12/canaistvpt/main/m3u8s/tvi.m3u8" },
-            { name: "CNN Portugal", category: "Canais Portugal", logo: "https://i.imgur.com/bc6tYVZ.png", url: "https://github.com/thomraider12/canaistvpt/raw/main/m3u8s/cnnpt.m3u8" },
-            { name: "V+ TVI (720p)", category: "Canais Portugal", logo: "https://upload.wikimedia.org/wikipedia/pt/e/ef/V%2BTVI_Logo.png", url: "https://raw.githubusercontent.com/thomraider12/canaistvpt/main/m3u8s/vmaistvi.m3u8" },
-            { name: "Porto Canal (720p)", category: "Canais Portugal", logo: "https://i.imgur.com/DwziwMY.png", url: "https://pull-live-156-1.global.ssl.fastly.net/pc5865dc25400thmb-ea6bf03b14fa318f7133/smil:pc1-jhrgyuoqe5865db-68tkgb14fa318f7133f03.smil/playlist.m3u8" }
+            { name: "Times Brasil (720p)", category: "Notícias", logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/b/bc/Times_Brasil_CNBC_logo_2025.svg/960px-Times_Brasil_CNBC_logo_2025.svg.png", url: "https://ssai2-ads.api.leiniao.com/global-adinsertion-api/hls/live/v2/21fdb6dd7491406bba86497a24390a25/playlist.m3u8" },
+            { name: "Times Brasil | CNBC (720p)", category: "Notícias", logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/b/bc/Times_Brasil_CNBC_logo_2025.svg/960px-Times_Brasil_CNBC_logo_2025.svg.png", url: "https://jmp2.uk/plu-679a973a97782f0008ff4bb6.m3u8" }
         ];
 
+        let currentCategory = "Todos";
         let hlsInstance = null;
 
-        function renderChannels(categoryFilter) {
-            const container = document.getElementById('channelContainer');
-            const titleElement = document.getElementById('categoryTitle');
-            
-            container.innerHTML = '';
+        const videoPlayer = document.getElementById("videoPlayer");
+        const errorOverlay = document.getElementById("errorOverlay");
+        const externalLinkBtn = document.getElementById("externalLinkBtn");
+        const channelsListEl = document.getElementById("channelsList");
+        const categoryButtonsEl = document.getElementById("categoryButtons");
+        const searchInput = document.getElementById("searchInput");
+        const channelTitle = document.getElementById("channelTitle");
+        const channelCategory = document.getElementById("channelCategory");
 
-            let filteredChannels = channels;
-            if (categoryFilter !== 'todos') {
-                filteredChannels = channels.filter(c => c.category === categoryFilter);
-                titleElement.textContent = categoryFilter;
-            } else {
-                titleElement.textContent = "Todos os Canais";
-            }
-
-            filteredChannels.forEach(channel => {
-                const card = document.createElement('div');
-                card.className = 'channel-card';
-                card.onclick = () => playChannel(channel.url, channel.name);
-
-                card.innerHTML = `
-                    <div class="channel-poster">
-                        <img src="${channel.logo}" alt="${channel.name}" onerror="this.src='https://via.placeholder.com/150?text=TV';">
-                    </div>
-                    <div class="channel-info">
-                        <span class="channel-name" title="${channel.name}">${channel.name}</span>
-                        <span class="channel-category">${channel.category}</span>
-                    </div>
-                `;
-                container.appendChild(card);
+        function renderCategories() {
+            const categories = ["Todos", ...new Set(channels.map(c => c.category))];
+            categoryButtonsEl.innerHTML = "";
+            categories.forEach(cat => {
+                const btn = document.createElement("button");
+                btn.textContent = cat;
+                btn.className = `px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
+                    currentCategory === cat ? 'bg-cyan-600 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                }`;
+                btn.onclick = () => {
+                    currentCategory = cat;
+                    renderCategories();
+                    renderChannels();
+                };
+                categoryButtonsEl.appendChild(btn);
             });
         }
 
-        function playChannel(url, name) {
-            const video = document.getElementById('videoPlayer');
-            const playerContainer = document.getElementById('playerContainer');
-            const playingTitle = document.getElementById('playingTitle');
+        function renderChannels() {
+            const searchTerm = searchInput.value.toLowerCase();
+            channelsListEl.innerHTML = "";
 
-            playerContainer.style.display = 'flex';
-            playingTitle.textContent = `Assistindo: ${name}`;
-            document.querySelector('.main-container').scrollTo({ top: 0, behavior: 'smooth' });
+            const filtered = channels.filter(channel => {
+                const matchesCategory = currentCategory === "Todos" || channel.category === currentCategory;
+                const matchesSearch = channel.name.toLowerCase().includes(searchTerm);
+                return matchesCategory && matchesSearch;
+            });
+
+            if (filtered.length === 0) {
+                channelsListEl.innerHTML = `<p class="text-slate-500 text-center py-4 text-sm">Nenhum canal encontrado</p>`;
+                return;
+            }
+
+            filtered.forEach((channel) => {
+                const item = document.createElement("div");
+                item.className = "flex items-center gap-3 p-3 rounded-lg bg-slate-800/40 hover:bg-slate-800 cursor-pointer border border-slate-800/60 transition-all group";
+                
+                const logoHtml = channel.logo 
+                    ? `<img src="${channel.logo}" class="w-10 h-10 object-contain rounded bg-slate-900/80 p-1" onerror="this.src='https://via.placeholder.com/40?text=TV'">`
+                    : `<div class="w-10 h-10 rounded bg-slate-800 flex items-center justify-center text-xs text-slate-400 font-bold">TV</div>`;
+
+                item.innerHTML = `
+                    ${logoHtml}
+                    <div class="overflow-hidden">
+                        <h4 class="text-sm font-medium text-slate-200 group-hover:text-cyan-400 truncate">${channel.name}</h4>
+                        <span class="text-xs text-slate-400">${channel.category}</span>
+                    </div>
+                `;
+
+                item.onclick = () => playChannel(channel);
+                channelsListEl.appendChild(item);
+            });
+        }
+
+        function showError(url) {
+            errorOverlay.classList.remove("hidden");
+            externalLinkBtn.href = url;
+        }
+
+        function hideError() {
+            errorOverlay.classList.add("hidden");
+        }
+
+        function playChannel(channel) {
+            hideError();
+            channelTitle.textContent = channel.name;
+            channelCategory.textContent = `Categoria: ${channel.category}`;
 
             if (Hls.isSupported()) {
                 if (hlsInstance) {
                     hlsInstance.destroy();
                 }
-                hlsInstance = new Hls();
-                hlsInstance.loadSource(url);
-                hlsInstance.attachMedia(video);
-                hlsInstance.on(Hls.Events.MANIFEST_PARSED, function() {
-                    video.play();
+                hlsInstance = new Hls({
+                    manifestLoadingMaxRetry: 2,
+                    levelLoadingMaxRetry: 2
                 });
-            } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-                video.src = url;
-                video.addEventListener('loadedmetadata', function() {
-                    video.play();
+                hlsInstance.loadSource(channel.url);
+                hlsInstance.attachMedia(videoPlayer);
+                
+                hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => {
+                    videoPlayer.play().catch(e => console.log("Autoplay bloqueado pelo navegador:", e));
                 });
+
+                hlsInstance.on(Hls.Events.ERROR, (event, data) => {
+                    if (data.fatal) {
+                        console.error("Erro ao reproduzir no navegador:", data);
+                        showError(channel.url);
+                    }
+                });
+            } else if (videoPlayer.canPlayType('application/vnd.apple.mpegurl')) {
+                videoPlayer.src = channel.url;
+                videoPlayer.addEventListener('loadedmetadata', () => {
+                    videoPlayer.play().catch(e => console.log("Autoplay bloqueado:", e));
+                });
+                videoPlayer.onerror = () => showError(channel.url);
             }
         }
 
-        function closePlayer() {
-            const video = document.getElementById('videoPlayer');
-            const playerContainer = document.getElementById('playerContainer');
+        searchInput.addEventListener("input", renderChannels);
+        renderCategories();
+        renderChannels();
 
-            video.pause();
-            video.src = "";
-            if (hlsInstance) {
-                hlsInstance.destroy();
-                hlsInstance = null;
-            }
-            playerContainer.style.display = 'none';
+        if (channels.length > 0) {
+            playChannel(channels[0]);
         }
-
-        function filterCategory(category, element) {
-            document.querySelectorAll('.nav-tabs li').forEach(li => li.classList.remove('active'));
-            element.classList.add('active');
-            renderChannels(category);
-        }
-
-        window.onload = function() {
-            renderChannels('todos');
-        };
     </script>
 </body>
 </html>
