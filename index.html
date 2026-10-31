@@ -65,53 +65,7 @@
     <!-- Scripts da Aplicação -->
     <script>
         const channels = [
-            // --- CANAIS GLOBO ---
-            { name: "Rede Globo (720p)", category: "Canais Globo", logo: "https://i.imgur.com/O02TF2r.png", url: "https://media2.cdntvms.com.br/tv_morena_dorados/index.m3u8" },
-            { name: "Rede Globo (1080p)", category: "Canais Globo", logo: "https://i.imgur.com/O02TF2r.png", url: "https://cdn-sp2.satlabscloud.com.br/RBS_HD/index.m3u8?token=Mw3YKkujzIi9hYQJ6kAQjQvly2VdBNuGPjHOq" },
-            { name: "TV Globo Sao Paulo (720p)", category: "Canais Globo", logo: "https://i.imgur.com/OoSUg78.png", url: "https://cdn-5.nxplay.com.br/GLOBO_SP_TK/index.m3u8" },
-            { name: "ge Fast (1080p) - Servidor 1", category: "Canais Globo", logo: "https://i.imgur.com/O02TF2r.png", url: "https://amg00716-globo-amg00716c1-tcl-br-9495.playouts.now.amagi.tv/playlist.m3u8" },
-            { name: "ge Fast (1080p) - Servidor 2", category: "Canais Globo", logo: "https://i.imgur.com/O02TF2r.png", url: "https://dfr80qz435crc.cloudfront.net/EFGH/Amagi/Globo/GE_Fast_BR/GE_Fast.m3u8" },
-
-            // --- CANAIS SBT ---
-            { name: "SBT Interior (720p)", category: "Canais SBT", logo: "https://i.imgur.com/IkZfa4j.png", url: "https://cdn.jmvstream.com/w/LVW-10801/LVW10801_Xvg4R0u57n/playlist.m3u8" },
-            { name: "SBT Nacional (720p)", category: "Canais SBT", logo: "https://i.imgur.com/tc1ALuu.png", url: "https://6836041ea1117.streamlock.net/cverde/cverde/playlist.m3u8" },
-            { name: "SBT Nacional (576p)", category: "Canais SBT", logo: "https://i.imgur.com/tc1ALuu.png", url: "https://media.cdntvms.com.br/sbt_sat/index.m3u8" },
-            { name: "SBT Nacional (1080p)", category: "Canais SBT", logo: "https://i.imgur.com/tc1ALuu.png", url: "https://cdn.live.br1.jmvstream.com/w/LVW-10801/LVW10801_Xvg4R0u57n/chunklist.m3u8" },
-            { name: "SBT News (720p)", category: "Canais SBT", logo: "https://upload.wikimedia.org/wikipedia/commons/4/42/SBT_News_2025.svg", url: "https://dai.google.com/linear/hls/event/1XSOdtQ0SH2G8OEmEfGgjQ/master.m3u8" },
-            { name: "SBT Nova Mutum", category: "Canais SBT", logo: "https://upload.wikimedia.org/wikipedia/pt/d/d0/Logotipo_do_SBT_Nova_Mutum.png", url: "https://video09.logicahost.com.br/sbtmutum/sbtmutum/playlist.m3u8" },
-            { name: "SBT Rondonopolis", category: "Canais SBT", logo: "https://upload.wikimedia.org/wikipedia/pt/d/d5/Logotipo_do_SBT_Rondon%C3%B3polis.png", url: "https://video09.logicahost.com.br/sbtroo/sbtroo/playlist.m3u8" },
-            { name: "SBTCuiaba", category: "Canais SBT", logo: "https://i.imgur.com/EZJWQ3i.png", url: "https://video09.logicahost.com.br/sbtcuiaba/sbtcuiaba/playlist.m3u8" },
-            { name: "Show do Milhao (1080p)", category: "Canais SBT", logo: "https://upload.wikimedia.org/wikipedia/pt/b/b2/Show_do_Milh%C3%A3o_Logo_2024.webp", url: "https://d38s7rrdbnh4oy.cloudfront.net/v1/master/215c0da80606fed29372070168106400a6ca7e1a/SSAI-Saudades/index.m3u8" },
-
-            // --- CANAIS BAND ---
-            { name: "Band (576p)", category: "Canais Band", logo: "https://i.imgur.com/1r5T6Pw.png", url: "https://media.cdntvms.com.br/band_sat/index.m3u8" },
-            { name: "BandNews (1080p)", category: "Canais Band", logo: "https://i.ibb.co/0jVZBFp/u8ya-iw-R-400x400.jpg", url: "https://cdn-5.nxplay.com.br/BAND_NEWS/index.m3u8" },
-
-            // --- ESPORTES ---
-            { name: "Band Sports (1080p)", category: "Esportes", logo: "https://i.imgur.com/EuPvzJe.png", url: "https://cdn-5.nxplay.com.br/BAND_SPORTS/index.m3u8" },
-            { name: "N Sports (1080p)", category: "Esportes", logo: "https://i.imgur.com/7QnJojr.png", url: "https://ogc-nsprt-tcl-roku-syndication.otteravision.com/ogc/nsprt/nsprt.m3u8" },
-            { name: "Realmadrid TV (720p)", category: "Esportes", logo: "", url: "https://jmp2.uk/plu-63dac28760bc8f0008a7654b.m3u8" },
-            { name: "Red Bull TV BR (720p)", category: "Esportes", logo: "https://images.pluto.tv/channels/5e7cb84a172a0f0007da69e4/colorLogoPNG.png", url: "https://jmp2.uk/plu-67813f3162bf016db944c9ab.m3u8" },
-            { name: "Top Barça (720p)", category: "Esportes", logo: "", url: "https://jmp2.uk/plu-6888ee858f4a4aa11feb9430.m3u8" },
-            { name: "UFC", category: "Esportes", logo: "", url: "https://jmp2.uk/plu-69a20556814d27f4ae630a92.m3u8" },
-            { name: "World Poker Tour", category: "Esportes", logo: "", url: "https://jmp2.uk/plu-63eba66da8b2270008436b10.m3u8" },
-            { name: "FIFA+", category: "Esportes", logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9c/FIFA%2B_(2025).svg/960px-FIFA%2B_(2025).svg.png", url: "https://jmp2.uk/plu-66997e8d3a4ad20008e50be9.m3u8" },
-            { name: "PFL MMA (720p)", category: "Esportes", logo: "", url: "https://jmp2.uk/plu-64f6180130ab3300083d896b.m3u8" },
-            { name: "SFT Combat (720p)", category: "Esportes", logo: "", url: "https://jmp2.uk/plu-6660b636cb3ea10008429c6a.m3u8" },
-
-            // --- FILMES E SÉRIES ---
-            { name: "Sony Channel (720p)", category: "Filmes e Séries", logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b9/Sony_Channel_Logo.png/960px-Sony_Channel_Logo.png", url: "https://cdn-5.nxplay.com.br/SONY_CHANNEL/index.m3u8" },
-            { name: "CINDIE TV (1080p) - Opção 1", category: "Filmes e Séries", logo: "https://a.jsrdn.com/hls/23208/cindie-tv/logo_20250225_222520_68.png", url: "https://cc-hqw8u5r1nshjc.akamaized.net/scheduler/scheduleMaster/352.m3u8" },
-            { name: "CINDIE TV (1080p) - Opção 2", category: "Filmes e Séries", logo: "https://a.jsrdn.com/hls/23208/cindie-tv/logo_20250225_222520_68.png", url: "https://d20xuwbyc4yoag.cloudfront.net/v1/master/9d062541f2ff39b5c0f48b743c6411d25f62fc25/DistroTV-MuxIP-CINDIE/387.m3u8?ads.vf=grWTpG3NQNi" },
-            { name: "Classique TV (360p)", category: "Filmes e Séries", logo: "https://i.imgur.com/rHxcraT.png", url: "https://stmv1.srvif.com/classique/classique/playlist.m3u8" },
-            { name: "Series Classic (720p)", category: "Filmes e Séries", logo: "https://storage.googleapis.com/soultv-prod-media/media/img/mobile/featured/bg_mobile.jpg", url: "https://cdn-tiva-video10-logicahost-com-br.smartbit.co/serieclassic/serieclassic/playlist.m3u8" },
-            { name: "TV Series 1 As Panteras (480p)", category: "Filmes e Séries", logo: "https://i.imgur.com/Ff5mj0o.png", url: "https://stmv1.srvif.com/tvserie/tvserie/playlist.m3u8" },
-            { name: "MyTime Movie Network Brazil (720p)", category: "Filmes e Séries", logo: "https://i.imgur.com/aiGQtzI.png", url: "https://appletree-mytime-samsungbrazil.amagi.tv/playlist.m3u8" },
-            { name: "Adrenalina Pura TV", category: "Filmes e Séries", logo: "https://i.imgur.com/Pvid2iH.png", url: "https://jmp2.uk/plu-61b790b985706b00072cb797.m3u8" },
-            { name: "Filmes Suspense", category: "Filmes e Séries", logo: "https://images.pluto.tv/channels/5f171d3442a0500007362f22/colorLogoPNG.png", url: "https://jmp2.uk/plu-5f171d3442a0500007362f22.m3u8" },
-            { name: "Runtime", category: "Filmes e Séries", logo: "", url: "https://jmp2.uk/plu-62c5d32e2c48f9000715b6e9.m3u8" },
-
-            // --- INFANTIL E DESENHOS ---
+              // --- INFANTIL E DESENHOS ---
             { name: "Gloob Web [Not 24/7]", category: "Infantil", logo: "https://i.ibb.co/wrQZXZ01/C-pia-de-Blue-Modern-Simple-Logo.png", url: "https://vs20.live.opencaster.com/globiosat_73a904af/index.m3u8" },
             { name: "NickOnline HD (720p)", category: "Infantil", logo: "https://x1colegal.com/logo.png", url: "https://x1colegal.com/hls/stream.m3u8" },
             { name: "Nickelodeon (480p)", category: "Infantil", logo: "https://i.imgur.com/E84jnP8.png", url: "https://stmv2.srvif.com/nicktoons/nicktoons/playlist.m3u8" },
@@ -150,6 +104,64 @@
             { name: "Turma da Mônica (720p)", category: "Infantil", logo: "https://i.imgur.com/nrvPPrW.png", url: "https://jmp2.uk/plu-5f997e44949bc70007a6941e.m3u8" },
             { name: "Yu-Gi-Oh", category: "Infantil", logo: "", url: "https://jmp2.uk/plu-63988a50be012600070f5db3.m3u8" },
             { name: "Desenhos Gospel", category: "Infantil", logo: "", url: "https://stmv1.srvif.com/gospelcartoon/gospelcartoon/playlist.m3u8" },
+            { name: "Box Kids", category: "Infantil", logo: "", url: "http://170.83.49.66:8083/BOXKIDSHD/index.m3u8" },
+
+             // --- FILMES E SÉRIES ---
+            { name: "Sony Channel (720p)", category: "Filmes e Séries", logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b9/Sony_Channel_Logo.png/960px-Sony_Channel_Logo.png", url: "https://cdn-5.nxplay.com.br/SONY_CHANNEL/index.m3u8" },
+            { name: "CINDIE TV (1080p) - Opção 1", category: "Filmes e Séries", logo: "https://a.jsrdn.com/hls/23208/cindie-tv/logo_20250225_222520_68.png", url: "https://cc-hqw8u5r1nshjc.akamaized.net/scheduler/scheduleMaster/352.m3u8" },
+            { name: "CINDIE TV (1080p) - Opção 2", category: "Filmes e Séries", logo: "https://a.jsrdn.com/hls/23208/cindie-tv/logo_20250225_222520_68.png", url: "https://d20xuwbyc4yoag.cloudfront.net/v1/master/9d062541f2ff39b5c0f48b743c6411d25f62fc25/DistroTV-MuxIP-CINDIE/387.m3u8?ads.vf=grWTpG3NQNi" },
+            { name: "Classique TV (360p)", category: "Filmes e Séries", logo: "https://i.imgur.com/rHxcraT.png", url: "https://stmv1.srvif.com/classique/classique/playlist.m3u8" },
+            { name: "Series Classic (720p)", category: "Filmes e Séries", logo: "https://storage.googleapis.com/soultv-prod-media/media/img/mobile/featured/bg_mobile.jpg", url: "https://cdn-tiva-video10-logicahost-com-br.smartbit.co/serieclassic/serieclassic/playlist.m3u8" },
+            { name: "TV Series 1 As Panteras (480p)", category: "Filmes e Séries", logo: "https://i.imgur.com/Ff5mj0o.png", url: "https://stmv1.srvif.com/tvserie/tvserie/playlist.m3u8" },
+            { name: "MyTime Movie Network Brazil (720p)", category: "Filmes e Séries", logo: "https://i.imgur.com/aiGQtzI.png", url: "https://appletree-mytime-samsungbrazil.amagi.tv/playlist.m3u8" },
+            { name: "Adrenalina Pura TV", category: "Filmes e Séries", logo: "https://i.imgur.com/Pvid2iH.png", url: "https://jmp2.uk/plu-61b790b985706b00072cb797.m3u8" },
+            { name: "Filmes Suspense", category: "Filmes e Séries", logo: "https://images.pluto.tv/channels/5f171d3442a0500007362f22/colorLogoPNG.png", url: "https://jmp2.uk/plu-5f171d3442a0500007362f22.m3u8" },
+            { name: "Runtime", category: "Filmes e Séries", logo: "", url: "https://jmp2.uk/plu-62c5d32e2c48f9000715b6e9.m3u8" },
+            { name: "AXN", category: "Filmes e Séries", logo: "", url: "http://170.83.16.50/AXN/index.m3u8" },
+            { name: "AXN", category: "Filmes e Séries", logo: "", url: "http://170.83.49.66:8083/AXNHD/index.m3u8" },
+            { name: "AXN HD", category: "Filmes e Séries", logo: "", url: "http://170.83.49.66:8083/AXNHD/index.m3u8" },
+            
+            // --- GOSPEL ---
+            { name: "Despertar (720p)", category: "Gospel", logo: "https://i.imgur.com/O02TF2r.png", url: "https://br.conectmy.com.br/DespertarTV/index.m3u8" },
+
+
+             // --- CANAIS GLOBO ---
+            { name: "Rede Globo (720p)", category: "Canais Globo", logo: "https://i.imgur.com/O02TF2r.png", url: "https://media2.cdntvms.com.br/tv_morena_dorados/index.m3u8" },
+            { name: "Rede Globo (1080p)", category: "Canais Globo", logo: "https://i.imgur.com/O02TF2r.png", url: "https://cdn-sp2.satlabscloud.com.br/RBS_HD/index.m3u8?token=Mw3YKkujzIi9hYQJ6kAQjQvly2VdBNuGPjHOq" },
+            { name: "TV Globo Sao Paulo (720p)", category: "Canais Globo", logo: "https://i.imgur.com/OoSUg78.png", url: "https://cdn-5.nxplay.com.br/GLOBO_SP_TK/index.m3u8" },
+            { name: "ge Fast (1080p) - Servidor 1", category: "Canais Globo", logo: "https://i.imgur.com/O02TF2r.png", url: "https://amg00716-globo-amg00716c1-tcl-br-9495.playouts.now.amagi.tv/playlist.m3u8" },
+            { name: "ge Fast (1080p) - Servidor 2", category: "Canais Globo", logo: "https://i.imgur.com/O02TF2r.png", url: "https://dfr80qz435crc.cloudfront.net/EFGH/Amagi/Globo/GE_Fast_BR/GE_Fast.m3u8" },
+
+            // --- CANAIS SBT ---
+            { name: "SBT Interior (720p)", category: "Canais SBT", logo: "https://i.imgur.com/IkZfa4j.png", url: "https://cdn.jmvstream.com/w/LVW-10801/LVW10801_Xvg4R0u57n/playlist.m3u8" },
+            { name: "SBT Nacional (720p)", category: "Canais SBT", logo: "https://i.imgur.com/tc1ALuu.png", url: "https://6836041ea1117.streamlock.net/cverde/cverde/playlist.m3u8" },
+            { name: "SBT Nacional (576p)", category: "Canais SBT", logo: "https://i.imgur.com/tc1ALuu.png", url: "https://media.cdntvms.com.br/sbt_sat/index.m3u8" },
+            { name: "SBT Nacional (1080p)", category: "Canais SBT", logo: "https://i.imgur.com/tc1ALuu.png", url: "https://cdn.live.br1.jmvstream.com/w/LVW-10801/LVW10801_Xvg4R0u57n/chunklist.m3u8" },
+            { name: "SBT News (720p)", category: "Canais SBT", logo: "https://upload.wikimedia.org/wikipedia/commons/4/42/SBT_News_2025.svg", url: "https://dai.google.com/linear/hls/event/1XSOdtQ0SH2G8OEmEfGgjQ/master.m3u8" },
+            { name: "SBT Nova Mutum", category: "Canais SBT", logo: "https://upload.wikimedia.org/wikipedia/pt/d/d0/Logotipo_do_SBT_Nova_Mutum.png", url: "https://video09.logicahost.com.br/sbtmutum/sbtmutum/playlist.m3u8" },
+            { name: "SBT Rondonopolis", category: "Canais SBT", logo: "https://upload.wikimedia.org/wikipedia/pt/d/d5/Logotipo_do_SBT_Rondon%C3%B3polis.png", url: "https://video09.logicahost.com.br/sbtroo/sbtroo/playlist.m3u8" },
+            { name: "SBTCuiaba", category: "Canais SBT", logo: "https://i.imgur.com/EZJWQ3i.png", url: "https://video09.logicahost.com.br/sbtcuiaba/sbtcuiaba/playlist.m3u8" },
+            { name: "Show do Milhao (1080p)", category: "Canais SBT", logo: "https://upload.wikimedia.org/wikipedia/pt/b/b2/Show_do_Milh%C3%A3o_Logo_2024.webp", url: "https://d38s7rrdbnh4oy.cloudfront.net/v1/master/215c0da80606fed29372070168106400a6ca7e1a/SSAI-Saudades/index.m3u8" },
+
+            // --- CANAIS BAND ---
+            { name: "Band (576p)", category: "Canais Band", logo: "https://i.imgur.com/1r5T6Pw.png", url: "https://media.cdntvms.com.br/band_sat/index.m3u8" },
+            { name: "BandNews (1080p)", category: "Canais Band", logo: "https://i.ibb.co/0jVZBFp/u8ya-iw-R-400x400.jpg", url: "https://cdn-5.nxplay.com.br/BAND_NEWS/index.m3u8" },
+
+            // --- ESPORTES ---
+            { name: "Band Sports (1080p)", category: "Esportes", logo: "https://i.imgur.com/EuPvzJe.png", url: "https://cdn-5.nxplay.com.br/BAND_SPORTS/index.m3u8" },
+            { name: "N Sports (1080p)", category: "Esportes", logo: "https://i.imgur.com/7QnJojr.png", url: "https://ogc-nsprt-tcl-roku-syndication.otteravision.com/ogc/nsprt/nsprt.m3u8" },
+            { name: "Realmadrid TV (720p)", category: "Esportes", logo: "", url: "https://jmp2.uk/plu-63dac28760bc8f0008a7654b.m3u8" },
+            { name: "Red Bull TV BR (720p)", category: "Esportes", logo: "https://images.pluto.tv/channels/5e7cb84a172a0f0007da69e4/colorLogoPNG.png", url: "https://jmp2.uk/plu-67813f3162bf016db944c9ab.m3u8" },
+            { name: "Top Barça (720p)", category: "Esportes", logo: "", url: "https://jmp2.uk/plu-6888ee858f4a4aa11feb9430.m3u8" },
+            { name: "UFC", category: "Esportes", logo: "", url: "https://jmp2.uk/plu-69a20556814d27f4ae630a92.m3u8" },
+            { name: "World Poker Tour", category: "Esportes", logo: "", url: "https://jmp2.uk/plu-63eba66da8b2270008436b10.m3u8" },
+            { name: "FIFA+", category: "Esportes", logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9c/FIFA%2B_(2025).svg/960px-FIFA%2B_(2025).svg.png", url: "https://jmp2.uk/plu-66997e8d3a4ad20008e50be9.m3u8" },
+            { name: "PFL MMA (720p)", category: "Esportes", logo: "", url: "https://jmp2.uk/plu-64f6180130ab3300083d896b.m3u8" },
+            { name: "SFT Combat (720p)", category: "Esportes", logo: "", url: "https://jmp2.uk/plu-6660b636cb3ea10008429c6a.m3u8" },
+
+           
+
+          
 
 
             // --- NOTÍCIAS E JORNALISMO ---
